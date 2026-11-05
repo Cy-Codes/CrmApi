@@ -55,7 +55,7 @@ jobs:
       - name: Checkout CRMDatabaseMS (SQL Server Schema & Seed)
         uses: actions/checkout@v4
         with:
-          repository: Cy-Codes/CRMDatabase
+          repository: Cy-Codes/CRMDatabaseMS
           path: CRMDatabaseMS
           token: ${{ secrets.GITHUB_TOKEN }}
 
