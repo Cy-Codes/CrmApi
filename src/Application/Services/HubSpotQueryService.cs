@@ -34,6 +34,9 @@ public class HubSpotQueryService : IHubSpotQueryService
     public Task<PagedResult<Deal>> GetDealsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _repository.GetDealsAsync(provider, options, ct);
 
+    public Task<PagedResult<Deal>> GetDealsByCompanyIdAsync(DatabaseProvider provider, long companyId, QueryOptions options, CancellationToken ct = default) =>
+        _repository.GetDealsByCompanyIdAsync(provider, companyId, options, ct);
+
     public Task<Deal?> GetDealByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
         _repository.GetDealByIdAsync(provider, id, ct);
 
@@ -67,16 +70,16 @@ public class HubSpotQueryService : IHubSpotQueryService
     public Task<PagedResult<Pipeline>> GetPipelinesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _repository.GetPipelinesAsync(provider, options, ct);
 
-    public Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+    public Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
         _repository.GetPipelineByIdAsync(provider, id, ct);
 
-    public Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, long pipelineId, CancellationToken ct = default) =>
+    public Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, string pipelineId, CancellationToken ct = default) =>
         _repository.GetStagesByPipelineIdAsync(provider, pipelineId, ct);
 
     public Task<PagedResult<DealStage>> GetDealStagesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _repository.GetDealStagesAsync(provider, options, ct);
 
-    public Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+    public Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
         _repository.GetDealStageByIdAsync(provider, id, ct);
 
     public Task<PagedResult<Engagement>> GetEngagementsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>

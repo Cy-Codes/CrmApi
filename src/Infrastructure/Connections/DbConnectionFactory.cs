@@ -34,7 +34,7 @@ public class DbConnectionFactory : IDbConnectionFactory
                       ?? _configuration.GetConnectionString("ms")
                       ?? _configuration.GetConnectionString("MsSql")
                       ?? _configuration["ConnectionStrings:CRMDatabaseMS"]
-                      ?? "Server=localhost,1433;Database=CRMDatabaseMS;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
+                      ?? "Server=localhost,1433;Database=CRMDatabaseMS;User Id=sa;Password=CrmDev2026!Secure#Pass;TrustServerCertificate=True;";
 
         return new SqlConnection(connStr);
     }
@@ -45,7 +45,7 @@ public class DbConnectionFactory : IDbConnectionFactory
                       ?? _configuration.GetConnectionString("pg")
                       ?? _configuration.GetConnectionString("PgSql")
                       ?? _configuration["ConnectionStrings:CRMDatabasePG"]
-                      ?? "Host=localhost;Port=5432;Database=CRMDatabasePG;Username=postgres;Password=postgres;";
+                      ?? "Host=localhost;Port=5432;Database=CRMDatabase;Username=postgres;Password=postgres;";
 
         return new NpgsqlConnection(connStr);
     }

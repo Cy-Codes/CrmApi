@@ -48,7 +48,7 @@ public class HubSpotController : BaseCrmController
         CancellationToken ct = default)
     {
         var db = ParseProvider(provider);
-        var options = new QueryOptions(page, pageSize, null, "asc", new Dictionary<string, string?> { ["companyId"] = id.ToString() });
+        var options = new QueryOptions(page, pageSize, null, "asc", new Dictionary<string, string?> { ["associatedCompanyId"] = id.ToString() });
         return Ok(await _queryService.GetContactsAsync(db, options, ct));
     }
 
@@ -61,8 +61,8 @@ public class HubSpotController : BaseCrmController
         CancellationToken ct = default)
     {
         var db = ParseProvider(provider);
-        var options = new QueryOptions(page, pageSize, null, "asc", new Dictionary<string, string?> { ["associatedCompanyId"] = id.ToString() });
-        return Ok(await _queryService.GetDealsAsync(db, options, ct));
+        var options = new QueryOptions(page, pageSize, null, "asc");
+        return Ok(await _queryService.GetDealsByCompanyIdAsync(db, id, options, ct));
     }
 
     [HttpGet("contacts")]
@@ -218,16 +218,16 @@ public class HubSpotController : BaseCrmController
         return Ok(await _queryService.GetPipelinesAsync(db, options, ct));
     }
 
-    [HttpGet("pipelines/{id:long}")]
-    public async Task<ActionResult<Pipeline>> GetPipelineById(string provider, long id, CancellationToken ct = default)
+    [HttpGet("pipelines/{id}")]
+    public async Task<ActionResult<Pipeline>> GetPipelineById(string provider, string id, CancellationToken ct = default)
     {
         var db = ParseProvider(provider);
         var pipeline = await _queryService.GetPipelineByIdAsync(db, id, ct);
         return pipeline is null ? NotFound() : Ok(pipeline);
     }
 
-    [HttpGet("pipelines/{id:long}/stages")]
-    public async Task<ActionResult<IReadOnlyList<DealStage>>> GetStagesByPipelineId(string provider, long id, CancellationToken ct = default)
+    [HttpGet("pipelines/{id}/stages")]
+    public async Task<ActionResult<IReadOnlyList<DealStage>>> GetStagesByPipelineId(string provider, string id, CancellationToken ct = default)
     {
         var db = ParseProvider(provider);
         return Ok(await _queryService.GetStagesByPipelineIdAsync(db, id, ct));
@@ -247,8 +247,8 @@ public class HubSpotController : BaseCrmController
         return Ok(await _queryService.GetDealStagesAsync(db, options, ct));
     }
 
-    [HttpGet("deal-stages/{id:long}")]
-    public async Task<ActionResult<DealStage>> GetDealStageById(string provider, long id, CancellationToken ct = default)
+    [HttpGet("deal-stages/{id}")]
+    public async Task<ActionResult<DealStage>> GetDealStageById(string provider, string id, CancellationToken ct = default)
     {
         var db = ParseProvider(provider);
         var stage = await _queryService.GetDealStageByIdAsync(db, id, ct);

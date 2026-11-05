@@ -22,7 +22,7 @@ public class Dynamics365Repository : IDynamics365Repository
         _baseRepository.GetListAsync<Contact>(provider, "Dynamics365.Contact", q => q.Where("parentcustomerid", accountId), ct);
 
     public Task<IReadOnlyList<Opportunity>> GetOpportunitiesByAccountIdAsync(DatabaseProvider provider, Guid accountId, CancellationToken ct = default) =>
-        _baseRepository.GetListAsync<Opportunity>(provider, "Dynamics365.Opportunity", q => q.Where("customerid", accountId), ct);
+        _baseRepository.GetListAsync<Opportunity>(provider, "Dynamics365.Opportunity", q => q.Where("parentaccountid", accountId), ct);
 
     public Task<PagedResult<Contact>> GetContactsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _baseRepository.GetPagedAsync<Contact>(provider, "Dynamics365.Contact", options, "contactid", null, ct);

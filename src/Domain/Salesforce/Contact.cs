@@ -11,7 +11,7 @@ public record Contact
     public string LastName { get; init; } = string.Empty;
     public string? FirstName { get; init; }
     public string? Salutation { get; init; }
-    public decimal? Name { get; init; }
+    public string? Name { get; init; }
     public string? ReportsToId { get; init; }
     public string? Title { get; init; }
     public string? Department { get; init; }

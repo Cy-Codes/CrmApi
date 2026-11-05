@@ -10,7 +10,7 @@ public record Lead
     public string LastName { get; init; } = string.Empty;
     public string? FirstName { get; init; }
     public string? Salutation { get; init; }
-    public decimal? Name { get; init; }
+    public string? Name { get; init; }
     public string? Title { get; init; }
     public string Company { get; init; } = string.Empty;
     public string? Street { get; init; }

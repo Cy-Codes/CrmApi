@@ -9,7 +9,7 @@ public record User
     public string Username { get; init; } = string.Empty;
     public string LastName { get; init; } = string.Empty;
     public string? FirstName { get; init; }
-    public decimal? Name { get; init; }
+    public string? Name { get; init; }
     public string Email { get; init; } = string.Empty;
     public bool IsActive { get; init; }
     public string? UserRoleId { get; init; }

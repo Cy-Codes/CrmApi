@@ -27,6 +27,19 @@ public class HubSpotRepository : IHubSpotRepository
     public Task<PagedResult<Deal>> GetDealsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _baseRepository.GetPagedAsync<Deal>(provider, "HubSpot.Deal", options, "dealId", null, ct);
 
+    public Task<PagedResult<Deal>> GetDealsByCompanyIdAsync(DatabaseProvider provider, long companyId, QueryOptions options, CancellationToken ct = default) =>
+        _baseRepository.GetPagedAsync<Deal>(
+            provider,
+            "HubSpot.Deal",
+            options,
+            "dealId",
+            q => q.WhereIn("dealId", new SqlKata.Query("HubSpot.ObjectAssociation")
+                .Select("fromObjectId")
+                .Where("fromObjectType", "deal")
+                .Where("toObjectType", "company")
+                .Where("toObjectId", companyId)),
+            ct);
+
     public Task<Deal?> GetDealByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<Deal>(provider, "HubSpot.Deal", "dealId", id, ct);
 
@@ -60,16 +73,16 @@ public class HubSpotRepository : IHubSpotRepository
     public Task<PagedResult<Pipeline>> GetPipelinesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _baseRepository.GetPagedAsync<Pipeline>(provider, "HubSpot.Pipeline", options, "pipelineId", null, ct);
 
-    public Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+    public Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<Pipeline>(provider, "HubSpot.Pipeline", "pipelineId", id, ct);
 
-    public Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, long pipelineId, CancellationToken ct = default) =>
+    public Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, string pipelineId, CancellationToken ct = default) =>
         _baseRepository.GetListAsync<DealStage>(provider, "HubSpot.DealStage", q => q.Where("pipelineId", pipelineId), ct);
 
     public Task<PagedResult<DealStage>> GetDealStagesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
         _baseRepository.GetPagedAsync<DealStage>(provider, "HubSpot.DealStage", options, "stageId", null, ct);
 
-    public Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+    public Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<DealStage>(provider, "HubSpot.DealStage", "stageId", id, ct);
 
     public Task<PagedResult<Engagement>> GetEngagementsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>

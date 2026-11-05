@@ -12,6 +12,7 @@ public interface IHubSpotQueryService
     Task<Contact?> GetContactByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
 
     Task<PagedResult<Deal>> GetDealsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
+    Task<PagedResult<Deal>> GetDealsByCompanyIdAsync(DatabaseProvider provider, long companyId, QueryOptions options, CancellationToken ct = default);
     Task<Deal?> GetDealByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
     Task<IReadOnlyList<LineItem>> GetLineItemsByDealIdAsync(DatabaseProvider provider, long dealId, CancellationToken ct = default);
 
@@ -28,11 +29,11 @@ public interface IHubSpotQueryService
     Task<LineItem?> GetLineItemByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
 
     Task<PagedResult<Pipeline>> GetPipelinesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
-    Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
-    Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, long pipelineId, CancellationToken ct = default);
+    Task<Pipeline?> GetPipelineByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
+    Task<IReadOnlyList<DealStage>> GetStagesByPipelineIdAsync(DatabaseProvider provider, string pipelineId, CancellationToken ct = default);
 
     Task<PagedResult<DealStage>> GetDealStagesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
-    Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
+    Task<DealStage?> GetDealStageByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
 
     Task<PagedResult<Engagement>> GetEngagementsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
     Task<Engagement?> GetEngagementByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
