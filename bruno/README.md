@@ -4,6 +4,30 @@ Git-native [Bruno](https://www.usebruno.com/) API collection for testing and ver
 
 ---
 
+## 🏛️ Architectural Highlights & Authoritative Sources
+
+The testing approach using Bruno follows established continuous delivery and test architecture principles:
+
+1. **Git-Native Test Artifacts in Source Control**:
+   - Rather than storing API collections in external proprietary clouds or UI silos, `.bru` plain-text files live directly inside the repository alongside application source code, versioned with git branches and peer-reviewed in pull requests.
+   - *References*:
+     - Martin Fowler: [Continuous Integration](https://martinfowler.com/articles/continuousIntegration.html) — *"Keep all assets in a single source repository... everything you need to build and test the project should be version controlled."*
+     - Bruno Documentation: [Bruno Git-Friendly Collections](https://docs.usebruno.com/).
+
+2. **Automated API Testing in the Deployment Pipeline**:
+   - Automated CLI test execution (`bru run`) integrates directly into CI/CD build scripts (`verify_all_pipelines.sh`), validating end-to-end functionality across both SQL Server and PostgreSQL.
+   - *References*:
+     - Martin Fowler: [DeploymentPipeline](https://martinfowler.com/bliki/DeploymentPipeline.html) — Automated gates progressing code from commit to production through verified stages.
+     - Martin Fowler: [The Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) & [Microservice Testing](https://martinfowler.com/articles/microservice-testing/) — API and component testing validating external transport contracts.
+
+3. **Multi-Environment Parity (ms vs pg)**:
+   - Bruno environments (`Local-MsSql` vs `Local-Postgres`) validate provider transparency by running the identical test suite against both database backends using variable parameterization.
+   - *References*:
+     - The Twelve-Factor App: [Dev/Prod Parity](https://12factor.net/dev-prod-parity) — Keeping development, testing, and production environments as similar as possible.
+     - Martin Fowler: [Branch By Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html) — Verifying equivalent behavior across swappable backends.
+
+---
+
 ## 📁 Collection Structure
 
 ```
