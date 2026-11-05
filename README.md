@@ -60,6 +60,7 @@ CrmApi/
 ├── README.md
 ├── docs/
 │   └── architecture-decisions.md
+├── bruno/                   # Bruno API test collection & environments
 ├── src/
 │   ├── Domain/              # Pure entity models & common contracts (PagedResult, QueryOptions)
 │   ├── Infrastructure/      # Connection factories, SqlKata compilers, CRM repositories
@@ -77,6 +78,7 @@ CrmApi/
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/)
 - Microsoft SQL Server (`CRMDatabaseMS`) and/or PostgreSQL (`CRMDatabasePG`) instances.
+- [Bruno CLI or GUI](https://www.usebruno.com/) (optional, for running the API collection).
 
 ### Build and Run
 ```bash
@@ -84,4 +86,16 @@ cd CrmApi
 dotnet build
 dotnet run --project src/Api
 ```
-Visit Swagger UI at `http://localhost:5000/swagger`.
+Visit Swagger UI at `http://localhost:5172/swagger` or GraphQL Banana Cake Pop at `http://localhost:5172/graphql`.
+
+### Testing Endpoints with Bruno
+Run the automated Bruno test suite against your active database provider:
+```bash
+# Against SQL Server
+bru run bruno -r --env Local-MsSql
+
+# Against PostgreSQL
+bru run bruno -r --env Local-Postgres
+```
+See [bruno/README.md](file:///Users/cy/codes/Work/CrmApi/bruno/README.md) for full collection documentation.
+
