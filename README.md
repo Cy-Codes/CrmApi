@@ -71,13 +71,15 @@ Every technical design choice in **CrmApi** is grounded in established enterpris
   - Martin Fowler: [Data Transfer Object (DTO)](https://martinfowler.com/eaaCatalog/dataTransferObject.html) — Transport envelopes minimizing chatty network calls.
   - Microsoft: [Microsoft REST API Guidelines Section 9 (Collections & Paging)](https://github.com/microsoft/api-guidelines#9-collections).
 
-### 8. API-First Testing & Division of Concerns
-- **Design Choice**: Fast in-memory unit and integration test suites in the application layer, reserving database testing for structural invariants and referential integrity.
+### 8. Application Database Encapsulation & Domain Ownership
+- **Design Choice**: Business logic, multi-entity validation, and test automation reside exclusively in the API layer, treating the database as an encapsulated Application Database and reserving database CPU for indexed data access and structural constraints.
 - **Authoritative References**:
-  - Martin Fowler: [The Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html).
-  - Martin Fowler: [Microservice Testing](https://martinfowler.com/articles/microservice-testing/).
+  - Martin Fowler: [Application Database](https://martinfowler.com/bliki/ApplicationDatabase.html) & [Integration Database](https://martinfowler.com/bliki/IntegrationDatabase.html) — Encapsulating data access behind a single service boundary and eliminating shared database coupling.
+  - Martin Fowler: [Domain Logic and SQL](https://martinfowler.com/articles/dblogic.html) — The engineering trade-offs of domain logic in application code vs. stored procedures.
+  - Martin Fowler: [The Practical Test Pyramid](https://martinfowler.com/articles/practical-test-pyramid.html) & [Microservice Testing](https://martinfowler.com/articles/microservice-testing/).
   - Martin Fowler: [Smart Endpoints and Dumb Pipes](https://martinfowler.com/articles/microservices.html#SmartEndpointsAndDumbPipes).
   - The Twelve-Factor App: [Stateless Processes & Backing Services](https://12factor.net/).
+  - AWS: [AWS Well-Architected Framework: Performance Efficiency & Reliability](https://aws.amazon.com/architecture/well-architected/).
 
 ---
 
