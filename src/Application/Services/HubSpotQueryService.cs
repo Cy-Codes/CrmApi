@@ -2,21 +2,16 @@ using Application.Interfaces;
 using Domain.Common;
 using Domain.HubSpot;
 using Infrastructure.Repositories;
-using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
 
-public class HubSpotQueryService : IHubSpotQueryService
+public sealed class HubSpotQueryService : IHubSpotQueryService
 {
     private readonly IHubSpotRepository _repository;
-    private readonly ILogger<HubSpotQueryService> _logger;
 
-    public HubSpotQueryService(
-        IHubSpotRepository repository,
-        ILogger<HubSpotQueryService> logger)
+    public HubSpotQueryService(IHubSpotRepository repository)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public Task<PagedResult<Company>> GetCompaniesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>

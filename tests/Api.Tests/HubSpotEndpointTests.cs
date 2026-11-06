@@ -2,11 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Domain.Common;
 using Domain.HubSpot;
-using Xunit;
 
 namespace Api.Tests;
 
-public class HubSpotEndpointTests : IClassFixture<CustomWebApplicationFactory>
+public sealed class HubSpotEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
 

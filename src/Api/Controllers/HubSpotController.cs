@@ -1,3 +1,6 @@
+using System.Collections.Frozen;
+using System.Globalization;
+using Api.Extensions;
 using Application.Interfaces;
 using Domain.Common;
 using Domain.HubSpot;
@@ -8,8 +11,10 @@ namespace Api.Controllers;
 [ApiController]
 [Route("api/{provider:regex(^(ms|pg)$)}/v1/hubspot")]
 [Produces("application/json")]
-public class HubSpotController : BaseCrmController
+public sealed class HubSpotController : BaseCrmController
 {
+    private const string AssociatedCompanyIdFilterKey = "associatedCompanyId";
+
     private readonly IHubSpotQueryService _queryService;
 
     public HubSpotController(IHubSpotQueryService queryService)
@@ -18,284 +23,218 @@ public class HubSpotController : BaseCrmController
     }
 
     [HttpGet("companies")]
-    public async Task<ActionResult<PagedResult<Company>>> GetCompanies(
+    public Task<ActionResult<PagedResult<Company>>> GetCompanies(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetCompaniesAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetCompaniesAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("companies/{id:long}")]
-    public async Task<ActionResult<Company>> GetCompanyById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var company = await _queryService.GetCompanyByIdAsync(db, id, ct);
-        return company is null ? NotFound() : Ok(company);
-    }
+    public Task<ActionResult<Company>> GetCompanyById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetCompanyByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("companies/{id:long}/contacts")]
-    public async Task<ActionResult<PagedResult<Contact>>> GetContactsByCompanyId(
+    public Task<ActionResult<PagedResult<Contact>>> GetContactsByCompanyId(
         string provider,
         long id,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
-        var db = ParseProvider(provider);
-        var options = new QueryOptions(page, pageSize, null, "asc", new Dictionary<string, string?> { ["associatedCompanyId"] = id.ToString() });
-        return Ok(await _queryService.GetContactsAsync(db, options, ct));
+        var filters = new Dictionary<string, string?>
+        {
+            [AssociatedCompanyIdFilterKey] = id.ToString(CultureInfo.InvariantCulture)
+        }.ToFrozenDictionary();
+
+        var options = new QueryOptions(page, pageSize, null, QueryOptions.DefaultSortDirection, filters);
+        return _queryService.GetContactsAsync(provider.ToDatabaseProvider(), options, ct).ToOkActionResultAsync();
     }
 
     [HttpGet("companies/{id:long}/deals")]
-    public async Task<ActionResult<PagedResult<Deal>>> GetDealsByCompanyId(
+    public Task<ActionResult<PagedResult<Deal>>> GetDealsByCompanyId(
         string provider,
         long id,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = new QueryOptions(page, pageSize, null, "asc");
-        return Ok(await _queryService.GetDealsByCompanyIdAsync(db, id, options, ct));
-    }
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetDealsByCompanyIdAsync(
+                provider.ToDatabaseProvider(),
+                id,
+                new QueryOptions(page, pageSize, null, QueryOptions.DefaultSortDirection),
+                ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("contacts")]
-    public async Task<ActionResult<PagedResult<Contact>>> GetContacts(
+    public Task<ActionResult<PagedResult<Contact>>> GetContacts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetContactsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetContactsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("contacts/{id:long}")]
-    public async Task<ActionResult<Contact>> GetContactById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var contact = await _queryService.GetContactByIdAsync(db, id, ct);
-        return contact is null ? NotFound() : Ok(contact);
-    }
+    public Task<ActionResult<Contact>> GetContactById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetContactByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("deals")]
-    public async Task<ActionResult<PagedResult<Deal>>> GetDeals(
+    public Task<ActionResult<PagedResult<Deal>>> GetDeals(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetDealsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetDealsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("deals/{id:long}")]
-    public async Task<ActionResult<Deal>> GetDealById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var deal = await _queryService.GetDealByIdAsync(db, id, ct);
-        return deal is null ? NotFound() : Ok(deal);
-    }
+    public Task<ActionResult<Deal>> GetDealById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetDealByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("deals/{id:long}/line-items")]
-    public async Task<ActionResult<IReadOnlyList<LineItem>>> GetLineItemsByDealId(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        return Ok(await _queryService.GetLineItemsByDealIdAsync(db, id, ct));
-    }
+    public Task<ActionResult<IReadOnlyList<LineItem>>> GetLineItemsByDealId(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetLineItemsByDealIdAsync(provider.ToDatabaseProvider(), id, ct).ToOkActionResultAsync();
 
     [HttpGet("tickets")]
-    public async Task<ActionResult<PagedResult<Ticket>>> GetTickets(
+    public Task<ActionResult<PagedResult<Ticket>>> GetTickets(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetTicketsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetTicketsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("tickets/{id:long}")]
-    public async Task<ActionResult<Ticket>> GetTicketById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var ticket = await _queryService.GetTicketByIdAsync(db, id, ct);
-        return ticket is null ? NotFound() : Ok(ticket);
-    }
+    public Task<ActionResult<Ticket>> GetTicketById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetTicketByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("owners")]
-    public async Task<ActionResult<PagedResult<Owner>>> GetOwners(
+    public Task<ActionResult<PagedResult<Owner>>> GetOwners(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetOwnersAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetOwnersAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("owners/{id:long}")]
-    public async Task<ActionResult<Owner>> GetOwnerById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var owner = await _queryService.GetOwnerByIdAsync(db, id, ct);
-        return owner is null ? NotFound() : Ok(owner);
-    }
+    public Task<ActionResult<Owner>> GetOwnerById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetOwnerByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("products")]
-    public async Task<ActionResult<PagedResult<Product>>> GetProducts(
+    public Task<ActionResult<PagedResult<Product>>> GetProducts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetProductsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetProductsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("products/{id:long}")]
-    public async Task<ActionResult<Product>> GetProductById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var prod = await _queryService.GetProductByIdAsync(db, id, ct);
-        return prod is null ? NotFound() : Ok(prod);
-    }
+    public Task<ActionResult<Product>> GetProductById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetProductByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("line-items")]
-    public async Task<ActionResult<PagedResult<LineItem>>> GetLineItems(
+    public Task<ActionResult<PagedResult<LineItem>>> GetLineItems(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetLineItemsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetLineItemsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("line-items/{id:long}")]
-    public async Task<ActionResult<LineItem>> GetLineItemById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var item = await _queryService.GetLineItemByIdAsync(db, id, ct);
-        return item is null ? NotFound() : Ok(item);
-    }
+    public Task<ActionResult<LineItem>> GetLineItemById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetLineItemByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("pipelines")]
-    public async Task<ActionResult<PagedResult<Pipeline>>> GetPipelines(
+    public Task<ActionResult<PagedResult<Pipeline>>> GetPipelines(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetPipelinesAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetPipelinesAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("pipelines/{id}")]
-    public async Task<ActionResult<Pipeline>> GetPipelineById(string provider, string id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var pipeline = await _queryService.GetPipelineByIdAsync(db, id, ct);
-        return pipeline is null ? NotFound() : Ok(pipeline);
-    }
+    public Task<ActionResult<Pipeline>> GetPipelineById(string provider, string id, CancellationToken ct = default) =>
+        _queryService.GetPipelineByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("pipelines/{id}/stages")]
-    public async Task<ActionResult<IReadOnlyList<DealStage>>> GetStagesByPipelineId(string provider, string id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        return Ok(await _queryService.GetStagesByPipelineIdAsync(db, id, ct));
-    }
+    public Task<ActionResult<IReadOnlyList<DealStage>>> GetStagesByPipelineId(string provider, string id, CancellationToken ct = default) =>
+        _queryService.GetStagesByPipelineIdAsync(provider.ToDatabaseProvider(), id, ct).ToOkActionResultAsync();
 
     [HttpGet("deal-stages")]
-    public async Task<ActionResult<PagedResult<DealStage>>> GetDealStages(
+    public Task<ActionResult<PagedResult<DealStage>>> GetDealStages(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetDealStagesAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetDealStagesAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("deal-stages/{id}")]
-    public async Task<ActionResult<DealStage>> GetDealStageById(string provider, string id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var stage = await _queryService.GetDealStageByIdAsync(db, id, ct);
-        return stage is null ? NotFound() : Ok(stage);
-    }
+    public Task<ActionResult<DealStage>> GetDealStageById(string provider, string id, CancellationToken ct = default) =>
+        _queryService.GetDealStageByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("engagements")]
-    public async Task<ActionResult<PagedResult<Engagement>>> GetEngagements(
+    public Task<ActionResult<PagedResult<Engagement>>> GetEngagements(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetEngagementsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetEngagementsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("engagements/{id:long}")]
-    public async Task<ActionResult<Engagement>> GetEngagementById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var eng = await _queryService.GetEngagementByIdAsync(db, id, ct);
-        return eng is null ? NotFound() : Ok(eng);
-    }
+    public Task<ActionResult<Engagement>> GetEngagementById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetEngagementByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("object-associations")]
-    public async Task<ActionResult<PagedResult<ObjectAssociation>>> GetObjectAssociations(
+    public Task<ActionResult<PagedResult<ObjectAssociation>>> GetObjectAssociations(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetObjectAssociationsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetObjectAssociationsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("object-associations/{id:long}")]
-    public async Task<ActionResult<ObjectAssociation>> GetObjectAssociationById(string provider, long id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var assoc = await _queryService.GetObjectAssociationByIdAsync(db, id, ct);
-        return assoc is null ? NotFound() : Ok(assoc);
-    }
+    public Task<ActionResult<ObjectAssociation>> GetObjectAssociationById(string provider, long id, CancellationToken ct = default) =>
+        _queryService.GetObjectAssociationByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 }

@@ -2,11 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using Domain.Common;
 using Domain.Dynamics365;
-using Xunit;
 
 namespace Api.Tests;
 
-public class Dynamics365EndpointTests : IClassFixture<CustomWebApplicationFactory>
+public sealed class Dynamics365EndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
     private static readonly Guid _testGuid = Guid.Parse("11111111-1111-1111-1111-111111111111");

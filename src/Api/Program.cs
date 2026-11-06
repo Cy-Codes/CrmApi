@@ -1,19 +1,26 @@
 using Api.GraphQL;
+using Api.GraphQL.Types;
 using Api.Middleware;
 using Application;
 using Microsoft.OpenApi;
+
+const string ApiVersion = "v1";
+const string ApiTitle = "CrmApi - Multi-Provider Relational CRM Web API";
+const string SwaggerEndpointPath = "/swagger/v1/swagger.json";
+const string SwaggerRoutePrefix = "swagger";
+const string EnableSwaggerConfigKey = "EnableSwagger";
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwaggerGen(static c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo
+    c.SwaggerDoc(ApiVersion, new OpenApiInfo
     {
-        Title = "CrmApi - Multi-Provider Relational CRM Web API",
-        Version = "v1",
+        Title = ApiTitle,
+        Version = ApiVersion,
         Description = "High-performance .NET 10 Web API serving Salesforce, HubSpot, and Dynamics 365 relational data from Microsoft SQL Server (ms) and PostgreSQL (pg) using Dapper and SqlKata."
     });
 });
@@ -24,12 +31,12 @@ builder.Services.AddApplicationServices();
 builder.Services
     .AddGraphQLServer()
     .AddQueryType<Query>()
-    .AddType<Api.GraphQL.Types.SalesforceAccountType>()
-    .AddType<Api.GraphQL.Types.SalesforceContactType>()
-    .AddType<Api.GraphQL.Types.HubSpotCompanyType>()
-    .AddType<Api.GraphQL.Types.HubSpotContactType>()
-    .AddType<Api.GraphQL.Types.Dynamics365AccountType>()
-    .AddType<Api.GraphQL.Types.Dynamics365ContactType>()
+    .AddType<SalesforceAccountType>()
+    .AddType<SalesforceContactType>()
+    .AddType<HubSpotCompanyType>()
+    .AddType<HubSpotContactType>()
+    .AddType<Dynamics365AccountType>()
+    .AddType<Dynamics365ContactType>()
     .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment());
 
 var app = builder.Build();
@@ -37,13 +44,13 @@ var app = builder.Build();
 // Configure the HTTP request pipeline
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment() || true)
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue(EnableSwaggerConfigKey, true))
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    app.UseSwaggerUI(static c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CrmApi v1");
-        c.RoutePrefix = "swagger";
+        c.SwaggerEndpoint(SwaggerEndpointPath, $"CrmApi {ApiVersion}");
+        c.RoutePrefix = SwaggerRoutePrefix;
     });
 }
 

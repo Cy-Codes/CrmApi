@@ -1,11 +1,12 @@
+using System.Collections.Frozen;
 using Domain.Common;
 using Infrastructure.Compilers;
+using Infrastructure.Repositories;
 using SqlKata;
-using Xunit;
 
 namespace Infrastructure.Tests;
 
-public class SqlKataCompilerTests
+public sealed class SqlKataCompilerTests
 {
     private readonly ISqlKataCompilerFactory _factory = new SqlKataCompilerFactory();
 
@@ -65,5 +66,46 @@ public class SqlKataCompilerTests
 
         Assert.Contains("SELECT COUNT(*)", pgResult.Sql.ToUpperInvariant());
         Assert.Contains("\"HubSpot\".\"Company\"", pgResult.Sql);
+    }
+
+    [Fact]
+    public void QueryFilteringExtensions_ApplyFilters_IgnoresUnsafeIdentifiers_And_ParsesInvariantTypes()
+    {
+        var filters = new Dictionary<string, string?>
+        {
+            ["Industry"] = "Technology",
+            ["AnnualRevenue"] = "125000.50",
+            ["IsDeleted"] = "false",
+            ["Name; DROP TABLE Account;--"] = "Malicious"
+        }.ToFrozenDictionary();
+
+        var compiler = _factory.GetCompiler(DatabaseProvider.Ms);
+        var query = new Query("Salesforce.Account")
+            .ApplyFilters(filters)
+            .ApplySorting("Name", QueryOptions.DescendingSortDirection)
+            .ApplyPagination(2, 10);
+
+        var compiled = compiler.Compile(query);
+
+        Assert.Contains("[Industry] =", compiled.Sql);
+        Assert.Contains("[AnnualRevenue] =", compiled.Sql);
+        Assert.Contains("[IsDeleted] =", compiled.Sql);
+        Assert.DoesNotContain("DROP TABLE", compiled.Sql);
+        Assert.Contains("ORDER BY [Name] DESC", compiled.Sql);
+        Assert.Contains(125000.50m, compiled.Bindings);
+        Assert.Equal(false, "false".ParseFilterValue());
+    }
+
+    [Theory]
+    [InlineData("ms", DatabaseProvider.Ms)]
+    [InlineData("MS", DatabaseProvider.Ms)]
+    [InlineData("pg", DatabaseProvider.Pg)]
+    [InlineData("PG", DatabaseProvider.Pg)]
+    public void DatabaseProviderExtensions_ToDatabaseProvider_ParsesValidProviders(
+        string rawProvider,
+        DatabaseProvider expected)
+    {
+        Assert.Equal(expected, rawProvider.ToDatabaseProvider());
+        Assert.Equal(rawProvider.ToLowerInvariant(), expected.ToProviderCode());
     }
 }

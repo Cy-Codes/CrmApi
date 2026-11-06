@@ -1,11 +1,10 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Xunit;
 
 namespace Api.Tests;
 
-public class GraphQLEndpointTests : IClassFixture<CustomWebApplicationFactory>
+public sealed class GraphQLEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
 

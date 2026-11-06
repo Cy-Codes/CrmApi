@@ -2,21 +2,16 @@ using Application.Interfaces;
 using Domain.Common;
 using Domain.Dynamics365;
 using Infrastructure.Repositories;
-using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
 
-public class Dynamics365QueryService : IDynamics365QueryService
+public sealed class Dynamics365QueryService : IDynamics365QueryService
 {
     private readonly IDynamics365Repository _repository;
-    private readonly ILogger<Dynamics365QueryService> _logger;
 
-    public Dynamics365QueryService(
-        IDynamics365Repository repository,
-        ILogger<Dynamics365QueryService> logger)
+    public Dynamics365QueryService(IDynamics365Repository repository)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public Task<PagedResult<Account>> GetAccountsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>

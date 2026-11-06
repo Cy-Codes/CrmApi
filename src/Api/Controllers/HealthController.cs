@@ -6,8 +6,12 @@ namespace Api.Controllers;
 
 [ApiController]
 [Route("health")]
-public class HealthController : ControllerBase
+public sealed class HealthController : ControllerBase
 {
+    private const string HealthyStatus = "Healthy";
+    private const string ConnectedStatus = "Connected";
+    private const string UnhealthyStatus = "Unhealthy";
+
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ILogger<HealthController> _logger;
 
@@ -20,37 +24,37 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult Get() => Ok(new { status = "Healthy", timestamp = DateTime.UtcNow });
+    public IActionResult Get() => Ok(new { status = HealthyStatus, timestamp = DateTime.UtcNow });
 
-    [HttpGet("ms")]
-    public async Task<IActionResult> CheckMsSql(CancellationToken ct)
+    [HttpGet(DatabaseProviderExtensions.MsProviderCode)]
+    public Task<IActionResult> CheckMsSql(CancellationToken ct) =>
+        ExecuteDatabaseHealthCheckAsync(DatabaseProvider.Ms, "SQL Server", ct);
+
+    [HttpGet(DatabaseProviderExtensions.PgProviderCode)]
+    public Task<IActionResult> CheckPgSql(CancellationToken ct) =>
+        ExecuteDatabaseHealthCheckAsync(DatabaseProvider.Pg, "PostgreSQL", ct);
+
+    /// <summary>
+    /// Side-effecting I/O helper executing a live database connectivity probe.
+    /// </summary>
+    private async Task<IActionResult> ExecuteDatabaseHealthCheckAsync(
+        DatabaseProvider provider,
+        string engineDisplayName,
+        CancellationToken ct)
     {
+        var providerCode = provider.ToProviderCode();
         try
         {
-            await using var conn = _connectionFactory.CreateConnection(DatabaseProvider.Ms);
+            await using var conn = _connectionFactory.CreateConnection(provider);
             await conn.OpenAsync(ct);
-            return Ok(new { provider = "ms", status = "Connected", server = conn.Database });
+            return Ok(new { provider = providerCode, status = ConnectedStatus, server = conn.Database });
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "SQL Server health check failed: {Message}", ex.Message);
-            return StatusCode(503, new { provider = "ms", status = "Unhealthy", error = ex.Message });
-        }
-    }
-
-    [HttpGet("pg")]
-    public async Task<IActionResult> CheckPgSql(CancellationToken ct)
-    {
-        try
-        {
-            await using var conn = _connectionFactory.CreateConnection(DatabaseProvider.Pg);
-            await conn.OpenAsync(ct);
-            return Ok(new { provider = "pg", status = "Connected", server = conn.Database });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "PostgreSQL health check failed: {Message}", ex.Message);
-            return StatusCode(503, new { provider = "pg", status = "Unhealthy", error = ex.Message });
+            _logger.LogWarning(ex, "{Engine} health check failed: {Message}", engineDisplayName, ex.Message);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { provider = providerCode, status = UnhealthyStatus, error = ex.Message });
         }
     }
 }

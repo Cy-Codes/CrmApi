@@ -3,7 +3,7 @@ using Domain.Dynamics365;
 
 namespace Infrastructure.Repositories;
 
-public class Dynamics365Repository : IDynamics365Repository
+public sealed class Dynamics365Repository : IDynamics365Repository
 {
     private readonly IBaseRepository _baseRepository;
 

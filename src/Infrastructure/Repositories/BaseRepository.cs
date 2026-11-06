@@ -1,5 +1,6 @@
+using System.Collections.Immutable;
 using System.Data;
-using System.Text.RegularExpressions;
+using System.Data.Common;
 using Dapper;
 using Domain.Common;
 using Infrastructure.Compilers;
@@ -11,13 +12,10 @@ namespace Infrastructure.Repositories;
 /// <summary>
 /// Generic repository utilizing SqlKata query compilation and Dapper execution across database engines.
 /// </summary>
-public partial class BaseRepository : IBaseRepository
+public sealed class BaseRepository : IBaseRepository
 {
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ISqlKataCompilerFactory _compilerFactory;
-
-    [GeneratedRegex("^[a-zA-Z0-9_.]+$")]
-    private static partial Regex SafeIdentifierRegex();
 
     public BaseRepository(
         IDbConnectionFactory connectionFactory,
@@ -27,184 +25,112 @@ public partial class BaseRepository : IBaseRepository
         _compilerFactory = compilerFactory ?? throw new ArgumentNullException(nameof(compilerFactory));
     }
 
-    public async Task<PagedResult<T>> GetPagedAsync<T>(
+    public Task<PagedResult<T>> GetPagedAsync<T>(
         DatabaseProvider provider,
         string table,
         QueryOptions options,
-        string defaultSortColumn = "Id",
+        string defaultSortColumn = QueryOptions.DefaultIdColumn,
         Func<Query, Query>? configureQuery = null,
         CancellationToken ct = default)
     {
-        var page = options.Page < 1 ? 1 : options.Page;
-        var pageSize = options.PageSize is < 1 or > 100 ? 20 : options.PageSize;
+        var page = options.NormalizedPage;
+        var pageSize = options.NormalizedPageSize;
         var compiler = _compilerFactory.GetCompiler(provider);
 
-        // 1. Build Base Query for Filtering
-        var baseQuery = new Query(table);
-        ApplyFilters(baseQuery, options.Filters);
-        if (configureQuery != null)
+        // 1. Pure Query AST Construction: Base Filtering
+        var baseQuery = new Query(table).ApplyFilters(options.Filters);
+        if (configureQuery is not null)
         {
             baseQuery = configureQuery(baseQuery);
         }
 
-        // 2. Count Query
-        var countQuery = baseQuery.Clone().AsCount();
-        var compiledCount = compiler.Compile(countQuery);
+        // 2. Pure Query AST Compilation: Count & Data Queries
+        var compiledCount = compiler.Compile(baseQuery.Clone().AsCount());
+        var compiledData = compiler.Compile(
+            baseQuery.Clone()
+                .ApplySorting(options.SortBy, options.SortDirection, defaultSortColumn)
+                .ApplyPagination(page, pageSize));
 
-        // 3. Data Query with Sorting and Pagination
-        var dataQuery = baseQuery.Clone();
-        ApplySorting(dataQuery, options.SortBy, options.SortDirection, defaultSortColumn);
-        dataQuery.Skip((page - 1) * pageSize).Take(pageSize);
-        var compiledData = compiler.Compile(dataQuery);
+        // 3. Explicit Side-Effecting I/O Execution
+        return ExecuteWithOpenConnectionAsync(
+            provider,
+            async connection =>
+            {
+                var totalCount = await connection.ExecuteScalarAsync<int>(
+                    CreateCommand(compiledCount, ct));
 
-        // 4. Execute via Dapper
-        await using var connection = _connectionFactory.CreateConnection(provider);
-        if (connection.State != ConnectionState.Open)
-        {
-            await connection.OpenAsync(ct);
-        }
+                var items = await connection.QueryAsync<T>(
+                    CreateCommand(compiledData, ct));
 
-        var totalCount = await connection.ExecuteScalarAsync<int>(
-            new CommandDefinition(
-                compiledCount.Sql,
-                new DynamicParameters(compiledCount.NamedBindings),
-                cancellationToken: ct));
-
-        var items = await connection.QueryAsync<T>(
-            new CommandDefinition(
-                compiledData.Sql,
-                new DynamicParameters(compiledData.NamedBindings),
-                cancellationToken: ct));
-
-        return new PagedResult<T>(items.ToList(), totalCount, page, pageSize);
+                return new PagedResult<T>(items.ToImmutableArray(), totalCount, page, pageSize);
+            },
+            ct);
     }
 
-    public async Task<T?> GetByIdAsync<T>(
+    public Task<T?> GetByIdAsync<T>(
         DatabaseProvider provider,
         string table,
         string idColumnName,
         object idValue,
         CancellationToken ct = default)
     {
-        if (!SafeIdentifierRegex().IsMatch(idColumnName))
+        if (!idColumnName.IsSafeSqlIdentifier())
         {
-            throw new ArgumentException("Invalid identifier column name", nameof(idColumnName));
+            throw new ArgumentException("Invalid identifier column name.", nameof(idColumnName));
         }
 
         var query = new Query(table).Where(idColumnName, idValue);
-        var compiler = _compilerFactory.GetCompiler(provider);
-        var compiled = compiler.Compile(query);
+        var compiled = _compilerFactory.GetCompiler(provider).Compile(query);
 
-        await using var connection = _connectionFactory.CreateConnection(provider);
-        if (connection.State != ConnectionState.Open)
-        {
-            await connection.OpenAsync(ct);
-        }
-
-        return await connection.QueryFirstOrDefaultAsync<T>(
-            new CommandDefinition(
-                compiled.Sql,
-                new DynamicParameters(compiled.NamedBindings),
-                cancellationToken: ct));
+        return ExecuteWithOpenConnectionAsync(
+            provider,
+            connection => connection.QueryFirstOrDefaultAsync<T>(CreateCommand(compiled, ct)),
+            ct);
     }
 
-    public async Task<IReadOnlyList<T>> GetListAsync<T>(
+    public Task<IReadOnlyList<T>> GetListAsync<T>(
         DatabaseProvider provider,
         string table,
         Func<Query, Query>? configureQuery = null,
         CancellationToken ct = default)
     {
-        var query = new Query(table);
-        if (configureQuery != null)
-        {
-            query = configureQuery(query);
-        }
+        var baseQuery = new Query(table);
+        var query = configureQuery is not null ? configureQuery(baseQuery) : baseQuery;
+        var compiled = _compilerFactory.GetCompiler(provider).Compile(query);
 
-        var compiler = _compilerFactory.GetCompiler(provider);
-        var compiled = compiler.Compile(query);
+        return ExecuteWithOpenConnectionAsync<IReadOnlyList<T>>(
+            provider,
+            async connection =>
+            {
+                var results = await connection.QueryAsync<T>(CreateCommand(compiled, ct));
+                return results.ToImmutableArray();
+            },
+            ct);
+    }
 
+    /// <summary>
+    /// Pure helper constructing a parameterized Dapper <see cref="CommandDefinition"/> from a compiled SqlKata query.
+    /// </summary>
+    private static CommandDefinition CreateCommand(SqlResult compiledQuery, CancellationToken ct) =>
+        new(
+            compiledQuery.Sql,
+            new DynamicParameters(compiledQuery.NamedBindings),
+            cancellationToken: ct);
+
+    /// <summary>
+    /// Side-effecting I/O boundary: opens a provider-specific <see cref="DbConnection"/>, executes the async operation, and disposes the connection.
+    /// </summary>
+    private async Task<TResult> ExecuteWithOpenConnectionAsync<TResult>(
+        DatabaseProvider provider,
+        Func<DbConnection, Task<TResult>> operation,
+        CancellationToken ct)
+    {
         await using var connection = _connectionFactory.CreateConnection(provider);
         if (connection.State != ConnectionState.Open)
         {
             await connection.OpenAsync(ct);
         }
 
-        var results = await connection.QueryAsync<T>(
-            new CommandDefinition(
-                compiled.Sql,
-                new DynamicParameters(compiled.NamedBindings),
-                cancellationToken: ct));
-
-        return results.ToList();
-    }
-
-    private static void ApplyFilters(Query query, Dictionary<string, string?>? filters)
-    {
-        if (filters == null || filters.Count == 0) return;
-
-        foreach (var (key, value) in filters)
-        {
-            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
-
-            // Guard against SQL injection in column name
-            if (!SafeIdentifierRegex().IsMatch(key))
-            {
-                continue;
-            }
-
-            if (value.Contains('%'))
-            {
-                query.WhereLike(key, value);
-            }
-            else if (bool.TryParse(value, out var boolVal))
-            {
-                query.Where(key, boolVal);
-            }
-            else if (int.TryParse(value, out var intVal))
-            {
-                query.Where(key, intVal);
-            }
-            else if (long.TryParse(value, out var longVal))
-            {
-                query.Where(key, longVal);
-            }
-            else if (decimal.TryParse(value, out var decVal))
-            {
-                query.Where(key, decVal);
-            }
-            else if (Guid.TryParse(value, out var guidVal))
-            {
-                query.Where(key, guidVal);
-            }
-            else
-            {
-                query.Where(key, value);
-            }
-        }
-    }
-
-    private static void ApplySorting(
-        Query query,
-        string? sortBy,
-        string sortDirection,
-        string defaultSortColumn)
-    {
-        var sortCol = !string.IsNullOrWhiteSpace(sortBy) && SafeIdentifierRegex().IsMatch(sortBy)
-            ? sortBy
-            : defaultSortColumn;
-
-        var isDesc = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
-
-        if (isDesc)
-        {
-            query.OrderByDesc(sortCol);
-        }
-        else
-        {
-            query.OrderBy(sortCol);
-        }
+        return await operation(connection);
     }
 }

@@ -1,14 +1,13 @@
-using HotChocolate.Types;
-using SfAccount = Domain.Salesforce.Account;
-using SfContact = Domain.Salesforce.Contact;
-using HsCompany = Domain.HubSpot.Company;
-using HsContact = Domain.HubSpot.Contact;
 using D365Account = Domain.Dynamics365.Account;
 using D365Contact = Domain.Dynamics365.Contact;
+using HsCompany = Domain.HubSpot.Company;
+using HsContact = Domain.HubSpot.Contact;
+using SfAccount = Domain.Salesforce.Account;
+using SfContact = Domain.Salesforce.Contact;
 
 namespace Api.GraphQL.Types;
 
-public class SalesforceAccountType : ObjectType<SfAccount>
+public sealed class SalesforceAccountType : ObjectType<SfAccount>
 {
     protected override void Configure(IObjectTypeDescriptor<SfAccount> descriptor)
     {
@@ -16,7 +15,7 @@ public class SalesforceAccountType : ObjectType<SfAccount>
     }
 }
 
-public class SalesforceContactType : ObjectType<SfContact>
+public sealed class SalesforceContactType : ObjectType<SfContact>
 {
     protected override void Configure(IObjectTypeDescriptor<SfContact> descriptor)
     {
@@ -24,7 +23,7 @@ public class SalesforceContactType : ObjectType<SfContact>
     }
 }
 
-public class HubSpotCompanyType : ObjectType<HsCompany>
+public sealed class HubSpotCompanyType : ObjectType<HsCompany>
 {
     protected override void Configure(IObjectTypeDescriptor<HsCompany> descriptor)
     {
@@ -32,7 +31,7 @@ public class HubSpotCompanyType : ObjectType<HsCompany>
     }
 }
 
-public class HubSpotContactType : ObjectType<HsContact>
+public sealed class HubSpotContactType : ObjectType<HsContact>
 {
     protected override void Configure(IObjectTypeDescriptor<HsContact> descriptor)
     {
@@ -40,7 +39,7 @@ public class HubSpotContactType : ObjectType<HsContact>
     }
 }
 
-public class Dynamics365AccountType : ObjectType<D365Account>
+public sealed class Dynamics365AccountType : ObjectType<D365Account>
 {
     protected override void Configure(IObjectTypeDescriptor<D365Account> descriptor)
     {
@@ -48,7 +47,7 @@ public class Dynamics365AccountType : ObjectType<D365Account>
     }
 }
 
-public class Dynamics365ContactType : ObjectType<D365Contact>
+public sealed class Dynamics365ContactType : ObjectType<D365Contact>
 {
     protected override void Configure(IObjectTypeDescriptor<D365Contact> descriptor)
     {

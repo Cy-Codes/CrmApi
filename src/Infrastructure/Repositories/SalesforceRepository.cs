@@ -4,7 +4,7 @@ using SfTask = Domain.Salesforce.Task;
 
 namespace Infrastructure.Repositories;
 
-public class SalesforceRepository : ISalesforceRepository
+public sealed class SalesforceRepository : ISalesforceRepository
 {
     private readonly IBaseRepository _baseRepository;
 

@@ -9,7 +9,7 @@ Covering **37 tables** across three CRM schemas:
 - **HubSpot (11 entities)**: `Company`, `Contact`, `Deal`, `Ticket`, `Owner`, `Product`, `LineItem`, `Pipeline`, `DealStage`, `Engagement`, `ObjectAssociation`.
 - **Dynamics 365 (11 entities)**: `Account`, `Contact`, `Opportunity`, `Lead`, `Incident`, `Product`, `PriceLevel`, `OpportunityProduct`, `BusinessUnit`, `SystemUser`, `ActivityPointer`.
 
-Detailed Architecture Decision Records (ADRs) are documented in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/CrmApi/docs/architecture-decisions.md).
+Detailed Architecture Decision Records (ADRs) are documented in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/docs/architecture-decisions.md). For engineering standards, refer to the [CrmApi Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CrmApi/CODING_STANDARDS.md) and repository-wide [Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CODING_STANDARDS.md).
 
 ---
 

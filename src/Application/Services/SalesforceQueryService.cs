@@ -2,22 +2,17 @@ using Application.Interfaces;
 using Domain.Common;
 using Domain.Salesforce;
 using Infrastructure.Repositories;
-using Microsoft.Extensions.Logging;
 using SfTask = Domain.Salesforce.Task;
 
 namespace Application.Services;
 
-public class SalesforceQueryService : ISalesforceQueryService
+public sealed class SalesforceQueryService : ISalesforceQueryService
 {
     private readonly ISalesforceRepository _repository;
-    private readonly ILogger<SalesforceQueryService> _logger;
 
-    public SalesforceQueryService(
-        ISalesforceRepository repository,
-        ILogger<SalesforceQueryService> logger)
+    public SalesforceQueryService(ISalesforceRepository repository)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public Task<PagedResult<Account>> GetAccountsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>

@@ -2,12 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using Domain.Common;
 using Domain.Salesforce;
-using Xunit;
 using Task = System.Threading.Tasks.Task;
 
 namespace Api.Tests;
 
-public class SalesforceEndpointTests : IClassFixture<CustomWebApplicationFactory>
+public sealed class SalesforceEndpointTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
 

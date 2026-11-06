@@ -3,7 +3,7 @@ using Domain.HubSpot;
 
 namespace Infrastructure.Repositories;
 
-public class HubSpotRepository : IHubSpotRepository
+public sealed class HubSpotRepository : IHubSpotRepository
 {
     private readonly IBaseRepository _baseRepository;
 

@@ -1,21 +1,22 @@
 using Application.Interfaces;
 using Domain.Common;
-using Domain.Dynamics365;
 using Domain.HubSpot;
-using Domain.Salesforce;
-using SfAccount = Domain.Salesforce.Account;
 using D365Account = Domain.Dynamics365.Account;
+using D365Contact = Domain.Dynamics365.Contact;
+using HsContact = Domain.HubSpot.Contact;
+using SfAccount = Domain.Salesforce.Account;
+using SfContact = Domain.Salesforce.Contact;
 
 namespace Api.GraphQL;
 
-public class Query
+public sealed class Query
 {
     // Salesforce
     public async Task<IReadOnlyList<SfAccount>> GetSalesforceAccounts(
         [Service] ISalesforceQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetAccountsAsync(provider, new QueryOptions(page, pageSize), ct);
@@ -26,37 +27,33 @@ public class Query
         string id,
         [Service] ISalesforceQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        CancellationToken ct = default)
-    {
-        return queryService.GetAccountByIdAsync(provider, id, ct);
-    }
+        CancellationToken ct = default) =>
+        queryService.GetAccountByIdAsync(provider, id, ct);
 
-    public async Task<IReadOnlyList<Domain.Salesforce.Contact>> GetSalesforceContacts(
+    public async Task<IReadOnlyList<SfContact>> GetSalesforceContacts(
         [Service] ISalesforceQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetContactsAsync(provider, new QueryOptions(page, pageSize), ct);
         return result.Items;
     }
 
-    public Task<Domain.Salesforce.Contact?> GetSalesforceContactById(
+    public Task<SfContact?> GetSalesforceContactById(
         string id,
         [Service] ISalesforceQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        CancellationToken ct = default)
-    {
-        return queryService.GetContactByIdAsync(provider, id, ct);
-    }
+        CancellationToken ct = default) =>
+        queryService.GetContactByIdAsync(provider, id, ct);
 
     // HubSpot
     public async Task<IReadOnlyList<Company>> GetHubSpotCompanies(
         [Service] IHubSpotQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetCompaniesAsync(provider, new QueryOptions(page, pageSize), ct);
@@ -67,16 +64,14 @@ public class Query
         long id,
         [Service] IHubSpotQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        CancellationToken ct = default)
-    {
-        return queryService.GetCompanyByIdAsync(provider, id, ct);
-    }
+        CancellationToken ct = default) =>
+        queryService.GetCompanyByIdAsync(provider, id, ct);
 
-    public async Task<IReadOnlyList<Domain.HubSpot.Contact>> GetHubSpotContacts(
+    public async Task<IReadOnlyList<HsContact>> GetHubSpotContacts(
         [Service] IHubSpotQueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetContactsAsync(provider, new QueryOptions(page, pageSize), ct);
@@ -87,8 +82,8 @@ public class Query
     public async Task<IReadOnlyList<D365Account>> GetDynamics365Accounts(
         [Service] IDynamics365QueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetAccountsAsync(provider, new QueryOptions(page, pageSize), ct);
@@ -99,16 +94,14 @@ public class Query
         Guid id,
         [Service] IDynamics365QueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        CancellationToken ct = default)
-    {
-        return queryService.GetAccountByIdAsync(provider, id, ct);
-    }
+        CancellationToken ct = default) =>
+        queryService.GetAccountByIdAsync(provider, id, ct);
 
-    public async Task<IReadOnlyList<Domain.Dynamics365.Contact>> GetDynamics365Contacts(
+    public async Task<IReadOnlyList<D365Contact>> GetDynamics365Contacts(
         [Service] IDynamics365QueryService queryService,
         DatabaseProvider provider = DatabaseProvider.Ms,
-        int page = 1,
-        int pageSize = 20,
+        int page = QueryOptions.DefaultPage,
+        int pageSize = QueryOptions.DefaultPageSize,
         CancellationToken ct = default)
     {
         var result = await queryService.GetContactsAsync(provider, new QueryOptions(page, pageSize), ct);

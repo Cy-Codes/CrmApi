@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Interfaces;
 using Domain.Common;
 using Domain.Dynamics365;
@@ -8,7 +9,7 @@ namespace Api.Controllers;
 [ApiController]
 [Route("api/{provider:regex(^(ms|pg)$)}/v1/dynamics365")]
 [Produces("application/json")]
-public class Dynamics365Controller : BaseCrmController
+public sealed class Dynamics365Controller : BaseCrmController
 {
     private readonly IDynamics365QueryService _queryService;
 
@@ -18,265 +19,190 @@ public class Dynamics365Controller : BaseCrmController
     }
 
     [HttpGet("accounts")]
-    public async Task<ActionResult<PagedResult<Account>>> GetAccounts(
+    public Task<ActionResult<PagedResult<Account>>> GetAccounts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetAccountsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetAccountsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("accounts/{id:guid}")]
-    public async Task<ActionResult<Account>> GetAccountById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var account = await _queryService.GetAccountByIdAsync(db, id, ct);
-        return account is null ? NotFound() : Ok(account);
-    }
+    public Task<ActionResult<Account>> GetAccountById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetAccountByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("accounts/{id:guid}/contacts")]
-    public async Task<ActionResult<IReadOnlyList<Contact>>> GetContactsByAccountId(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        return Ok(await _queryService.GetContactsByAccountIdAsync(db, id, ct));
-    }
+    public Task<ActionResult<IReadOnlyList<Contact>>> GetContactsByAccountId(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetContactsByAccountIdAsync(provider.ToDatabaseProvider(), id, ct).ToOkActionResultAsync();
 
     [HttpGet("accounts/{id:guid}/opportunities")]
-    public async Task<ActionResult<IReadOnlyList<Opportunity>>> GetOpportunitiesByAccountId(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        return Ok(await _queryService.GetOpportunitiesByAccountIdAsync(db, id, ct));
-    }
+    public Task<ActionResult<IReadOnlyList<Opportunity>>> GetOpportunitiesByAccountId(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetOpportunitiesByAccountIdAsync(provider.ToDatabaseProvider(), id, ct).ToOkActionResultAsync();
 
     [HttpGet("contacts")]
-    public async Task<ActionResult<PagedResult<Contact>>> GetContacts(
+    public Task<ActionResult<PagedResult<Contact>>> GetContacts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetContactsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetContactsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("contacts/{id:guid}")]
-    public async Task<ActionResult<Contact>> GetContactById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var contact = await _queryService.GetContactByIdAsync(db, id, ct);
-        return contact is null ? NotFound() : Ok(contact);
-    }
+    public Task<ActionResult<Contact>> GetContactById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetContactByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("opportunities")]
-    public async Task<ActionResult<PagedResult<Opportunity>>> GetOpportunities(
+    public Task<ActionResult<PagedResult<Opportunity>>> GetOpportunities(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetOpportunitiesAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetOpportunitiesAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("opportunities/{id:guid}")]
-    public async Task<ActionResult<Opportunity>> GetOpportunityById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var opp = await _queryService.GetOpportunityByIdAsync(db, id, ct);
-        return opp is null ? NotFound() : Ok(opp);
-    }
+    public Task<ActionResult<Opportunity>> GetOpportunityById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetOpportunityByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("opportunities/{id:guid}/products")]
-    public async Task<ActionResult<IReadOnlyList<OpportunityProduct>>> GetProductsByOpportunityId(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        return Ok(await _queryService.GetProductsByOpportunityIdAsync(db, id, ct));
-    }
+    public Task<ActionResult<IReadOnlyList<OpportunityProduct>>> GetProductsByOpportunityId(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetProductsByOpportunityIdAsync(provider.ToDatabaseProvider(), id, ct).ToOkActionResultAsync();
 
     [HttpGet("leads")]
-    public async Task<ActionResult<PagedResult<Lead>>> GetLeads(
+    public Task<ActionResult<PagedResult<Lead>>> GetLeads(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetLeadsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetLeadsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("leads/{id:guid}")]
-    public async Task<ActionResult<Lead>> GetLeadById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var lead = await _queryService.GetLeadByIdAsync(db, id, ct);
-        return lead is null ? NotFound() : Ok(lead);
-    }
+    public Task<ActionResult<Lead>> GetLeadById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetLeadByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("incidents")]
-    public async Task<ActionResult<PagedResult<Incident>>> GetIncidents(
+    public Task<ActionResult<PagedResult<Incident>>> GetIncidents(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetIncidentsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetIncidentsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("incidents/{id:guid}")]
-    public async Task<ActionResult<Incident>> GetIncidentById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var inc = await _queryService.GetIncidentByIdAsync(db, id, ct);
-        return inc is null ? NotFound() : Ok(inc);
-    }
+    public Task<ActionResult<Incident>> GetIncidentById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetIncidentByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("products")]
-    public async Task<ActionResult<PagedResult<Product>>> GetProducts(
+    public Task<ActionResult<PagedResult<Product>>> GetProducts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetProductsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetProductsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("products/{id:guid}")]
-    public async Task<ActionResult<Product>> GetProductById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var prod = await _queryService.GetProductByIdAsync(db, id, ct);
-        return prod is null ? NotFound() : Ok(prod);
-    }
+    public Task<ActionResult<Product>> GetProductById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetProductByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("price-levels")]
-    public async Task<ActionResult<PagedResult<PriceLevel>>> GetPriceLevels(
+    public Task<ActionResult<PagedResult<PriceLevel>>> GetPriceLevels(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetPriceLevelsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetPriceLevelsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("price-levels/{id:guid}")]
-    public async Task<ActionResult<PriceLevel>> GetPriceLevelById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var pl = await _queryService.GetPriceLevelByIdAsync(db, id, ct);
-        return pl is null ? NotFound() : Ok(pl);
-    }
+    public Task<ActionResult<PriceLevel>> GetPriceLevelById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetPriceLevelByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("opportunity-products")]
-    public async Task<ActionResult<PagedResult<OpportunityProduct>>> GetOpportunityProducts(
+    public Task<ActionResult<PagedResult<OpportunityProduct>>> GetOpportunityProducts(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetOpportunityProductsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetOpportunityProductsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("opportunity-products/{id:guid}")]
-    public async Task<ActionResult<OpportunityProduct>> GetOpportunityProductById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var op = await _queryService.GetOpportunityProductByIdAsync(db, id, ct);
-        return op is null ? NotFound() : Ok(op);
-    }
+    public Task<ActionResult<OpportunityProduct>> GetOpportunityProductById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetOpportunityProductByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("business-units")]
-    public async Task<ActionResult<PagedResult<BusinessUnit>>> GetBusinessUnits(
+    public Task<ActionResult<PagedResult<BusinessUnit>>> GetBusinessUnits(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetBusinessUnitsAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetBusinessUnitsAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("business-units/{id:guid}")]
-    public async Task<ActionResult<BusinessUnit>> GetBusinessUnitById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var bu = await _queryService.GetBusinessUnitByIdAsync(db, id, ct);
-        return bu is null ? NotFound() : Ok(bu);
-    }
+    public Task<ActionResult<BusinessUnit>> GetBusinessUnitById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetBusinessUnitByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("system-users")]
-    public async Task<ActionResult<PagedResult<SystemUser>>> GetSystemUsers(
+    public Task<ActionResult<PagedResult<SystemUser>>> GetSystemUsers(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetSystemUsersAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetSystemUsersAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("system-users/{id:guid}")]
-    public async Task<ActionResult<SystemUser>> GetSystemUserById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var su = await _queryService.GetSystemUserByIdAsync(db, id, ct);
-        return su is null ? NotFound() : Ok(su);
-    }
+    public Task<ActionResult<SystemUser>> GetSystemUserById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetSystemUserByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 
     [HttpGet("activity-pointers")]
-    public async Task<ActionResult<PagedResult<ActivityPointer>>> GetActivityPointers(
+    public Task<ActionResult<PagedResult<ActivityPointer>>> GetActivityPointers(
         string provider,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int page = QueryOptions.DefaultPage,
+        [FromQuery] int pageSize = QueryOptions.DefaultPageSize,
         [FromQuery] string? sortBy = null,
-        [FromQuery] string sortDirection = "asc",
-        CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var options = CreateQueryOptions(page, pageSize, sortBy, sortDirection);
-        return Ok(await _queryService.GetActivityPointersAsync(db, options, ct));
-    }
+        [FromQuery] string sortDirection = QueryOptions.DefaultSortDirection,
+        CancellationToken ct = default) =>
+        _queryService
+            .GetActivityPointersAsync(provider.ToDatabaseProvider(), CreateQueryOptions(page, pageSize, sortBy, sortDirection), ct)
+            .ToOkActionResultAsync();
 
     [HttpGet("activity-pointers/{id:guid}")]
-    public async Task<ActionResult<ActivityPointer>> GetActivityPointerById(string provider, Guid id, CancellationToken ct = default)
-    {
-        var db = ParseProvider(provider);
-        var act = await _queryService.GetActivityPointerByIdAsync(db, id, ct);
-        return act is null ? NotFound() : Ok(act);
-    }
+    public Task<ActionResult<ActivityPointer>> GetActivityPointerById(string provider, Guid id, CancellationToken ct = default) =>
+        _queryService.GetActivityPointerByIdAsync(provider.ToDatabaseProvider(), id, ct).ToActionResultAsync();
 }

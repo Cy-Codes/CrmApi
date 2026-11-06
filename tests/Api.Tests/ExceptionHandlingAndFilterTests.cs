@@ -3,12 +3,11 @@ using System.Net.Http.Json;
 using Domain.Common;
 using Domain.Salesforce;
 using Moq;
-using Xunit;
 using Task = System.Threading.Tasks.Task;
 
 namespace Api.Tests;
 
-public class ExceptionHandlingAndFilterTests : IClassFixture<CustomWebApplicationFactory>
+public sealed class ExceptionHandlingAndFilterTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
@@ -28,8 +27,10 @@ public class ExceptionHandlingAndFilterTests : IClassFixture<CustomWebApplicatio
                 It.Is<QueryOptions>(o => o.Filters != null && o.Filters.ContainsKey("Industry") && o.Filters["Industry"] == "Technology"),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<Account>(
-                new List<Account> { new() { Id = "001Filtered", Name = "Tech Corp", Industry = "Technology" } },
-                1, 1, 20));
+                [new Account { Id = "001Filtered", Name = "Tech Corp", Industry = "Technology" }],
+                1,
+                QueryOptions.DefaultPage,
+                QueryOptions.DefaultPageSize));
 
         var response = await _client.GetAsync("/api/ms/v1/salesforce/accounts?Industry=Technology");
 
