@@ -186,3 +186,15 @@ Whenever logic is repeated across controllers, query builders, or tests, extract
 ### 8.2 Pre-Commit Auto-Formatting & Unused Using Removal
 - `.editorconfig` and `Directory.Build.props` enforce `EnforceCodeStyleInBuild`, `IDE0005` (remove unnecessary `using` directives), and `dotnet_sort_system_directives_first = true`.
 - On every `git commit`, the pre-commit hook automatically formats staged `.cs` files, removes unused `using` statements, sorts remaining `using` directives, and re-stages the files.
+
+---
+
+## 9. Container Image & Runtime Configuration Contract
+
+The same image runs unchanged on local Docker, AWS ECS Fargate, and Azure Container Apps (see [crm-infra/CODING_STANDARDS.md](file:///Users/cy/codes/localstack-reference-architecture/crm-infra/CODING_STANDARDS.md) and ADR 10–12 in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/docs/architecture-decisions.md)).
+
+- **Multi-Stage, Non-Root `Dockerfile`**: Build with `mcr.microsoft.com/dotnet/sdk`, run on `mcr.microsoft.com/dotnet/aspnet` as the non-root `$APP_UID` user. Never bake credentials or environment-specific settings into the image.
+- **Environment-Only Configuration**: The container listens on `ASPNETCORE_HTTP_PORTS=8080` and reads `ConnectionStrings__CRMDatabaseMS` / `ConnectionStrings__CRMDatabasePG` (ADO.NET format). These names and shapes are shared with `crm-infra/terraform/modules/shared/crm-runtime-config` and must not change without updating it.
+- **Documented Templates**: Every runtime variable is documented in [`.env.example`](file:///Users/cy/codes/localstack-reference-architecture/CrmApiCSharp/.env.example); the real `.env` is git-ignored and never committed.
+- **Health Contract**: `/health` (and `/health/{ms|pg}`) must stay unauthenticated and cheap; load balancers and `crm-infra/scripts/smoke.sh` depend on it.
+- **Build Context Hygiene**: Keep `.dockerignore` excluding `bin/`, `obj/`, `.env`, and test artifacts so the content-hash image tag changes only when shipped source changes.

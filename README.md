@@ -111,6 +111,8 @@ CrmApiCSharp/
 ├── CrmApiCSharp.slnx
 ├── README.md
 ├── CODING_STANDARDS.md
+├── Dockerfile                     # Multi-stage, non-root, cloud-agnostic container image
+├── .env.example                   # Container runtime contract (copy to git-ignored .env)
 ├── bruno/                         # Git-native API test collection & environments
 ├── src/
 │   ├── Domain/                    # Pure entity records & value objects (PagedResult, QueryOptions)
@@ -138,6 +140,16 @@ dotnet build CrmApiCSharp.slnx
 dotnet run --project src/Api
 ```
 Visit Swagger UI at `http://localhost:5172/swagger` or GraphQL Banana Cake Pop at `http://localhost:5172/graphql`.
+
+### Run as a Container
+The same image runs on local Docker, AWS ECS Fargate, and Azure Container Apps. All settings come from environment variables documented in [.env.example](file:///Users/cy/codes/localstack-reference-architecture/CrmApiCSharp/.env.example):
+```bash
+cp .env.example .env
+docker build -t crm-api-csharp .
+docker run --rm -p 8081:8080 --env-file .env crm-api-csharp
+curl http://localhost:8081/health
+```
+To deploy every runtime × engine permutation locally or to LocalStack for AWS / Azure, see [crm-infra/README.md](file:///Users/cy/codes/localstack-reference-architecture/crm-infra/README.md).
 
 ### Testing Endpoints with Bruno
 Run the automated Bruno test suite against your active database provider:

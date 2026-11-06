@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+.git
+.github
+.idea
+.vscode
+bruno
+tests
+*.md
+.env
+.env.*
