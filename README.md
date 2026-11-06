@@ -1,4 +1,4 @@
-# CrmApi - Multi-Provider CRM Web API
+# CrmApiCSharp - Multi-Provider CRM Web API (.NET 10 / C# 13)
 
 A high-performance C# .NET 10 Web API serving relational data from two enterprise CRM database engines:
 - **Microsoft SQL Server** (`CRMDatabaseMS`)
@@ -9,13 +9,13 @@ Covering **37 tables** across three CRM schemas:
 - **HubSpot (11 entities)**: `Company`, `Contact`, `Deal`, `Ticket`, `Owner`, `Product`, `LineItem`, `Pipeline`, `DealStage`, `Engagement`, `ObjectAssociation`.
 - **Dynamics 365 (11 entities)**: `Account`, `Contact`, `Opportunity`, `Lead`, `Incident`, `Product`, `PriceLevel`, `OpportunityProduct`, `BusinessUnit`, `SystemUser`, `ActivityPointer`.
 
-Detailed Architecture Decision Records (ADRs) are documented in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/docs/architecture-decisions.md). For engineering standards, refer to the [CrmApi Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CrmApi/CODING_STANDARDS.md) and repository-wide [Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CODING_STANDARDS.md).
+Detailed Architecture Decision Records (ADRs) are documented in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/docs/architecture-decisions.md). For engineering standards, refer to the [CrmApiCSharp Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CrmApiCSharp/CODING_STANDARDS.md) and repository-wide [Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CODING_STANDARDS.md).
 
 ---
 
 ## Architectural Highlights & Authoritative Sources
 
-Every technical design choice in **CrmApi** is grounded in established enterprise patterns, official specifications, and literature from Martin Fowler and Microsoft Architecture:
+Every technical design choice in **CrmApiCSharp** is grounded in established enterprise patterns, official specifications, and literature from Martin Fowler and Microsoft Architecture:
 
 ### 1. High-Throughput Micro-ORM via Dapper
 - **Design Choice**: Forego heavy ORMs (EF Core/NHibernate) and execute compiled MSIL directly over ADO.NET `DbDataReader` streams for near-zero allocation and raw query speed.
@@ -107,11 +107,10 @@ Where:
 ## Solution Layout
 
 ```
-CrmApi/
-├── CrmApi.slnx
+CrmApiCSharp/
+├── CrmApiCSharp.slnx
 ├── README.md
-├── docs/
-│   └── architecture-decisions.md  # Formal ADRs & literature citations
+├── CODING_STANDARDS.md
 ├── bruno/                         # Git-native API test collection & environments
 ├── src/
 │   ├── Domain/                    # Pure entity records & value objects (PagedResult, QueryOptions)
@@ -134,8 +133,8 @@ CrmApi/
 
 ### Build and Run
 ```bash
-cd CrmApi
-dotnet build
+cd CrmApiCSharp
+dotnet build CrmApiCSharp.slnx
 dotnet run --project src/Api
 ```
 Visit Swagger UI at `http://localhost:5172/swagger` or GraphQL Banana Cake Pop at `http://localhost:5172/graphql`.
@@ -149,4 +148,4 @@ bru run bruno -r --env Local-MsSql
 # Against PostgreSQL
 bru run bruno -r --env Local-Postgres
 ```
-See [bruno/README.md](file:///Users/cy/codes/localstack-reference-architecture/CrmApi/bruno/README.md) for full collection documentation.
+See [bruno/README.md](file:///Users/cy/codes/localstack-reference-architecture/CrmApiCSharp/bruno/README.md) for full collection documentation.

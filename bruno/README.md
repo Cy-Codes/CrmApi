@@ -1,6 +1,6 @@
-# CrmApi Bruno Collection
+# CrmApiCSharp Bruno Collection
 
-Git-native [Bruno](https://www.usebruno.com/) API collection for testing and verifying all REST and GraphQL endpoints in **CrmApi**.
+Git-native [Bruno](https://www.usebruno.com/) API collection for testing and verifying all REST and GraphQL endpoints in **CrmApiCSharp**.
 
 ---
 

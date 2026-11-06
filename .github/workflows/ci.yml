@@ -1,4 +1,4 @@
-name: CrmApi CI & End-to-End Integration Pipeline
+name: CrmApiCSharp CI & End-to-End Integration Pipeline
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
     name: Build .NET 10 Solution & Run xUnit Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout CrmApi
+      - name: Checkout CrmApiCSharp
         uses: actions/checkout@v4
 
       - name: Setup .NET 10 SDK
@@ -26,13 +26,13 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore Dependencies
-        run: dotnet restore CrmApi.slnx
+        run: dotnet restore CrmApiCSharp.slnx
 
       - name: Build Solution
-        run: dotnet build CrmApi.slnx -c Release --no-restore
+        run: dotnet build CrmApiCSharp.slnx -c Release --no-restore
 
       - name: Run xUnit Unit & Component Tests
-        run: dotnet test CrmApi.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test CrmApiCSharp.slnx -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload Test Results
         if: always()
@@ -47,10 +47,10 @@ jobs:
     needs: build-and-unit-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout CrmApi
+      - name: Checkout CrmApiCSharp
         uses: actions/checkout@v4
         with:
-          path: CrmApi
+          path: CrmApiCSharp
 
       - name: Checkout CRMDatabaseMS (SQL Server Schema & Seed)
         uses: actions/checkout@v4
@@ -116,17 +116,17 @@ jobs:
           docker exec crm-database-ms /app/tests/run_tests.sh
           docker exec crm_database_pg /workspace/tests/run_tests.sh
 
-      - name: Build & Launch CrmApi Server
-        working-directory: CrmApi
+      - name: Build & Launch CrmApiCSharp Server
+        working-directory: CrmApiCSharp
         run: |
-          dotnet build CrmApi.slnx -c Release
+          dotnet build CrmApiCSharp.slnx -c Release
           nohup dotnet run --no-build -c Release --project src/Api --urls http://localhost:5172 > /tmp/crmapi.log 2>&1 &
           echo $! > /tmp/crmapi.pid
 
-          echo "Waiting for CrmApi to listen on http://localhost:5172/health..."
+          echo "Waiting for CrmApiCSharp to listen on http://localhost:5172/health..."
           for i in {1..30}; do
             if curl -sf http://localhost:5172/health > /dev/null; then
-              echo "CrmApi is healthy!"
+              echo "CrmApiCSharp is healthy!"
               curl -s http://localhost:5172/health | jq .
               curl -s http://localhost:5172/health/ms | jq .
               curl -s http://localhost:5172/health/pg | jq .
@@ -140,17 +140,17 @@ jobs:
           done
 
       - name: Run Bruno API Test Suite against SQL Server (Local-MsSql)
-        working-directory: CrmApi
+        working-directory: CrmApiCSharp
         run: |
           chmod +x ./bruno/run_tests.sh
           ./bruno/run_tests.sh Local-MsSql
 
       - name: Run Bruno API Test Suite against PostgreSQL (Local-Postgres)
-        working-directory: CrmApi
+        working-directory: CrmApiCSharp
         run: |
           ./bruno/run_tests.sh Local-Postgres
 
-      - name: Stop CrmApi & Tear Down Containers
+      - name: Stop CrmApiCSharp & Tear Down Containers
         if: always()
         run: |
           if [ -f /tmp/crmapi.pid ]; then

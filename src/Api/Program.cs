@@ -5,7 +5,7 @@ using Application;
 using Microsoft.OpenApi;
 
 const string ApiVersion = "v1";
-const string ApiTitle = "CrmApi - Multi-Provider Relational CRM Web API";
+const string ApiTitle = "CrmApiCSharp - Multi-Provider Relational CRM Web API";
 const string SwaggerEndpointPath = "/swagger/v1/swagger.json";
 const string SwaggerRoutePrefix = "swagger";
 const string EnableSwaggerConfigKey = "EnableSwagger";
@@ -49,7 +49,7 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue(EnableSwaggerC
     app.UseSwagger();
     app.UseSwaggerUI(static c =>
     {
-        c.SwaggerEndpoint(SwaggerEndpointPath, $"CrmApi {ApiVersion}");
+        c.SwaggerEndpoint(SwaggerEndpointPath, $"CrmApiCSharp {ApiVersion}");
         c.RoutePrefix = SwaggerRoutePrefix;
     });
 }
