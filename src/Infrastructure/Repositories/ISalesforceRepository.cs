@@ -54,4 +54,25 @@ public interface ISalesforceRepository
 
     Task<PagedResult<CampaignMember>> GetCampaignMembersAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
     Task<CampaignMember?> GetCampaignMemberByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates an Account with a server-generated identifier and returns that identifier.</summary>
+    Task<string> ExecuteCreateAccountAsync(DatabaseProvider provider, AccountWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces an Account's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateAccountAsync(DatabaseProvider provider, string id, AccountWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes an Account; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteAccountAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates a Contact with a server-generated identifier and returns that identifier.</summary>
+    Task<string> ExecuteCreateContactAsync(DatabaseProvider provider, ContactWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces a Contact's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateContactAsync(DatabaseProvider provider, string id, ContactWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes a Contact; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteContactAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates an Opportunity with a server-generated identifier and returns that identifier.</summary>
+    Task<string> ExecuteCreateOpportunityAsync(DatabaseProvider provider, OpportunityWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces an Opportunity's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateOpportunityAsync(DatabaseProvider provider, string id, OpportunityWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes an Opportunity; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteOpportunityAsync(DatabaseProvider provider, string id, CancellationToken ct = default);
 }

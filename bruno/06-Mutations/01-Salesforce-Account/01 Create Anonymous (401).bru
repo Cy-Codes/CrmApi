@@ -1,0 +1,22 @@
+meta {
+  name: Create Anonymous (401)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/{{provider}}/v1/salesforce/accounts
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Bruno Mutation Test Account",
+    "ownerId": "{{sf_user_id}}"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

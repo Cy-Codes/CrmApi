@@ -102,6 +102,42 @@ Where:
 - `GET /api/pg/v1/hubspot/companies?domain=example.com`
 - `GET /api/ms/v1/dynamics365/opportunities?statecode=0`
 
+### Write Endpoints & Roles (first pass: core entities)
+Create, update, and delete are available for the core entities of each CRM (the remaining tables are tracked as a follow-up):
+
+| CRM | Resources | Identifier |
+| :--- | :--- | :--- |
+| `salesforce` | `accounts`, `contacts`, `opportunities` | 18-char string (`001…`, `003…`, `006…`) |
+| `hubspot` | `companies`, `contacts`, `deals` | `long` |
+| `dynamics365` | `accounts`, `contacts`, `opportunities` | `guid` |
+
+| Verb | Route | Success | Required role |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/{provider}/v1/{crm}/{resource}` | `201` + `Location` + created entity | `admin` or `user` |
+| `PUT` | `/api/{provider}/v1/{crm}/{resource}/{id}` | `200` + updated entity (full replace of writable fields) | `admin` or `user` |
+| `DELETE` | `/api/{provider}/v1/{crm}/{resource}/{id}` | `204` (hard delete) | `admin` |
+
+Problem Details errors: `400` invalid body, `401` missing/invalid token, `403` token without the required role, `404` unknown id, `409` foreign-key/unique-key violation (e.g. deleting a row that is still referenced).
+
+**Roles** come from the JWT `roles` claim (string or array). Anonymous callers are read-only: every `GET` (and `/health`, `/graphql`, Swagger) is public, while mutations are *always* protected — there is no switch that opens them up.
+
+| Caller | Read | Create / Update | Delete |
+| :--- | :---: | :---: | :---: |
+| Anonymous (no token) | ✅ | ❌ `401` | ❌ `401` |
+| `user` | ✅ | ✅ | ❌ `403` |
+| `admin` | ✅ | ✅ | ✅ |
+
+Server-owned columns are never accepted from the client: identifiers are generated (`ICrmIdGenerator`), audit timestamps use `TimeProvider`, and generated columns (`Salesforce.Contact.Name`, `Salesforce.Opportunity.ExpectedRevenue`, Dynamics `fullname`) are derived. Because JWT subjects do not map to CRM users, the record's `ownerId` doubles as creator/modifier on the audit columns.
+
+```bash
+# Mint a local-development HS256 token (same secret/issuer/audience as appsettings.json) and call the API
+TOKEN=$(../crm-infra/scripts/dev-token.sh admin)
+curl -X POST http://localhost:5172/api/pg/v1/hubspot/companies \
+  -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+  -d '{"name":"Acme"}'
+```
+Signing key, issuer, and audience are configured under `Authentication:Jwt` (`Authentication__Jwt__SigningKey` etc. as environment variables). Replace the dev signing key before any real deployment.
+
 ---
 
 ## Solution Layout
@@ -115,7 +151,7 @@ CrmApiCSharp/
 ├── .env.example                   # Container runtime contract (copy to git-ignored .env)
 ├── bruno/                         # Git-native API test collection & environments
 ├── src/
-│   ├── Domain/                    # Pure entity records & value objects (PagedResult, QueryOptions)
+│   ├── Domain/                    # Pure entity records, write-request records & value objects (PagedResult, QueryOptions, CrmRoles)
 │   ├── Infrastructure/            # DbConnectionFactory, SqlKata compilers, Dapper repositories
 │   ├── Application/               # Query services, filtering & relationship resolvers
 │   └── Api/                       # ASP.NET Core controllers, OpenAPI / Swagger, HotChocolate GraphQL
@@ -154,10 +190,11 @@ To deploy every runtime × engine permutation locally or to LocalStack for AWS /
 ### Testing Endpoints with Bruno
 Run the automated Bruno test suite against your active database provider:
 ```bash
-# Against SQL Server
-bru run bruno -r --env Local-MsSql
+# Against SQL Server (mints dev admin/user tokens for the 06-Mutations suite)
+./bruno/run_tests.sh Local-MsSql
 
 # Against PostgreSQL
-bru run bruno -r --env Local-Postgres
+./bruno/run_tests.sh Local-Postgres
 ```
+The `06-Mutations` suite reads `CRM_ADMIN_TOKEN` / `CRM_USER_TOKEN` from the environment; `run_tests.sh` fills them via `crm-infra/scripts/dev-token.sh` when unset.
 See [bruno/README.md](file:///Users/cy/codes/localstack-reference-architecture/CrmApiCSharp/bruno/README.md) for full collection documentation.

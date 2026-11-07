@@ -1,0 +1,23 @@
+meta {
+  name: Create Anonymous (401)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/{{provider}}/v1/dynamics365/accounts
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Bruno Mutation Test Account",
+    "ownerId": "{{d365_system_user_id}}",
+    "owningbusinessunit": "{{d365_business_unit_id}}"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

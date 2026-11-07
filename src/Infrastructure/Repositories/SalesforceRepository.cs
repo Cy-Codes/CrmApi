@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Domain.Common;
 using Domain.Salesforce;
 using SfTask = Domain.Salesforce.Task;
@@ -7,10 +8,14 @@ namespace Infrastructure.Repositories;
 public sealed class SalesforceRepository : ISalesforceRepository
 {
     private readonly IBaseRepository _baseRepository;
+    private readonly ICrmIdGenerator _idGenerator;
+    private readonly TimeProvider _timeProvider;
 
-    public SalesforceRepository(IBaseRepository baseRepository)
+    public SalesforceRepository(IBaseRepository baseRepository, ICrmIdGenerator idGenerator, TimeProvider timeProvider)
     {
         _baseRepository = baseRepository ?? throw new ArgumentNullException(nameof(baseRepository));
+        _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public Task<PagedResult<Account>> GetAccountsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
@@ -114,4 +119,60 @@ public sealed class SalesforceRepository : ISalesforceRepository
 
     public Task<CampaignMember?> GetCampaignMemberByIdAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<CampaignMember>(provider, "Salesforce.CampaignMember", "Id", id, ct);
+
+    public Task<string> ExecuteCreateAccountAsync(DatabaseProvider provider, AccountWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, SalesforceWriteColumns.AccountTable, SalesforceWriteColumns.AccountKeyPrefix, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateAccountAsync(DatabaseProvider provider, string id, AccountWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, SalesforceWriteColumns.AccountTable, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteAccountAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, SalesforceWriteColumns.AccountTable, SalesforceWriteColumns.IdColumn, id, ct);
+
+    public Task<string> ExecuteCreateContactAsync(DatabaseProvider provider, ContactWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, SalesforceWriteColumns.ContactTable, SalesforceWriteColumns.ContactKeyPrefix, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateContactAsync(DatabaseProvider provider, string id, ContactWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, SalesforceWriteColumns.ContactTable, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteContactAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, SalesforceWriteColumns.ContactTable, SalesforceWriteColumns.IdColumn, id, ct);
+
+    public Task<string> ExecuteCreateOpportunityAsync(DatabaseProvider provider, OpportunityWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, SalesforceWriteColumns.OpportunityTable, SalesforceWriteColumns.OpportunityKeyPrefix, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateOpportunityAsync(DatabaseProvider provider, string id, OpportunityWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, SalesforceWriteColumns.OpportunityTable, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteOpportunityAsync(DatabaseProvider provider, string id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, SalesforceWriteColumns.OpportunityTable, SalesforceWriteColumns.IdColumn, id, ct);
+
+    private async Task<string> CreateAsync(
+        DatabaseProvider provider,
+        string table,
+        string keyPrefix,
+        ImmutableDictionary<string, object?> columns,
+        string ownerId,
+        CancellationToken ct)
+    {
+        var id = _idGenerator.NewSalesforceId(keyPrefix);
+        var withAudit = columns.WithCreateAudit(id, ownerId, _timeProvider.GetUtcNow().UtcDateTime);
+        await _baseRepository.ExecuteInsertAsync(provider, table, withAudit, ct);
+        return id;
+    }
+
+    private Task<bool> UpdateAsync(
+        DatabaseProvider provider,
+        string table,
+        string id,
+        ImmutableDictionary<string, object?> columns,
+        string ownerId,
+        CancellationToken ct) =>
+        _baseRepository.ExecuteUpdateAsync(
+            provider,
+            table,
+            SalesforceWriteColumns.IdColumn,
+            id,
+            columns.WithUpdateAudit(ownerId, _timeProvider.GetUtcNow().UtcDateTime),
+            ct);
 }

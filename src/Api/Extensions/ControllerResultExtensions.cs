@@ -56,4 +56,16 @@ public static class ControllerResultExtensions
     public static async Task<ActionResult<T>> ToOkActionResultAsync<T>(this Task<T> resultTask)
         where T : class =>
         new OkObjectResult(await resultTask);
+
+    /// <summary>
+    /// Pure transformation mapping a delete outcome into <see cref="NoContentResult"/> (204) or <see cref="NotFoundResult"/> (404).
+    /// </summary>
+    public static ActionResult ToNoContentOrNotFound(this bool deleted) =>
+        deleted ? new NoContentResult() : new NotFoundResult();
+
+    /// <summary>
+    /// Awaits an asynchronous delete outcome and maps it into 204 or 404.
+    /// </summary>
+    public static async Task<ActionResult> ToNoContentOrNotFoundAsync(this Task<bool> deletedTask) =>
+        (await deletedTask).ToNoContentOrNotFound();
 }

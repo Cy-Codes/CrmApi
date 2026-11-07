@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Domain.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Middleware;
@@ -8,6 +9,7 @@ public sealed class ExceptionHandlingMiddleware
     private const string ProblemJsonContentType = "application/problem+json";
     private const string BadRequestTitle = "Bad Request";
     private const string NotFoundTitle = "Not Found";
+    private const string ConflictTitle = "Conflict";
     private const string InternalServerErrorTitle = "Internal Server Error";
     private const string GenericInternalErrorDetail = "An unexpected server error occurred.";
 
@@ -51,6 +53,7 @@ public sealed class ExceptionHandlingMiddleware
         {
             ArgumentException or BadHttpRequestException => StatusCodes.Status400BadRequest,
             System.Collections.Generic.KeyNotFoundException => StatusCodes.Status404NotFound,
+            ConflictException => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status500InternalServerError
         };
 
@@ -58,6 +61,7 @@ public sealed class ExceptionHandlingMiddleware
         {
             StatusCodes.Status400BadRequest => BadRequestTitle,
             StatusCodes.Status404NotFound => NotFoundTitle,
+            StatusCodes.Status409Conflict => ConflictTitle,
             _ => InternalServerErrorTitle
         };
 

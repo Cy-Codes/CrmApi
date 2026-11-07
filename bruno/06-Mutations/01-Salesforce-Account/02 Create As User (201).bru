@@ -1,0 +1,30 @@
+meta {
+  name: Create As User (201)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/{{provider}}/v1/salesforce/accounts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{process.env.CRM_USER_TOKEN}}
+}
+
+body:json {
+  {
+    "name": "Bruno Mutation Test Account",
+    "ownerId": "{{sf_user_id}}"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("created_id", res.body.id);
+}

@@ -13,6 +13,9 @@ public static class DependencyInjection
         services.AddScoped<ISalesforceQueryService, SalesforceQueryService>();
         services.AddScoped<IHubSpotQueryService, HubSpotQueryService>();
         services.AddScoped<IDynamics365QueryService, Dynamics365QueryService>();
+        services.AddScoped<ISalesforceCommandService, SalesforceCommandService>();
+        services.AddScoped<IHubSpotCommandService, HubSpotCommandService>();
+        services.AddScoped<IDynamics365CommandService, Dynamics365CommandService>();
 
         return services;
     }

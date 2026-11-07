@@ -1,6 +1,6 @@
 # CrmApiCSharp Coding Standards & Best Practices
 
-This document is the complete, self-contained specification of both the **Universal Coding Standards** and the **.NET 10 / C# 13, ASP.NET Core, Dapper, SqlKata, HotChocolate GraphQL, and Bruno API Testing Standards** for the **CrmApiCSharp** repository.
+This document is the complete, self-contained specification of both the **Universal Coding Standards** and the **.NET 10 / C# 13, ASP.NET Core, Dapper, SqlKata, HotChocolate GraphQL, and Bruno API Testing Standards** for the **CrmApiCSharp** repository. The architectural rationale is recorded in [docs/architecture-decisions.md](file:///Users/cy/codes/localstack-reference-architecture/docs/architecture-decisions.md), and the workspace [Master Coding Standards](file:///Users/cy/codes/localstack-reference-architecture/CODING_STANDARDS.md) defines the universal rules.
 
 ---
 

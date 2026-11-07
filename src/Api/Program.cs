@@ -3,9 +3,9 @@ using Api.GraphQL;
 using Api.GraphQL.Types;
 using Api.Middleware;
 using Application;
+using Domain.Common;
 using Infrastructure.Connections;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -49,7 +49,7 @@ builder.Services.AddSwaggerGen(static c =>
     });
 });
 
-// Configure JWT & OAuth2 Authentication and Authorization
+// Configure JWT Authentication (roles from the `roles` claim) and role-based Authorization
 var jwtSection = builder.Configuration.GetSection(AuthSectionName);
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -60,8 +60,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         var issuer = jwtSection["Issuer"] ?? authority;
         var signingKey = jwtSection["SigningKey"];
 
-        options.Authority = authority;
+        // A configured signing key validates tokens locally; OIDC discovery (Authority) is only used without one,
+        // so a missing identity provider never delays or fails request authentication.
+        if (string.IsNullOrEmpty(signingKey))
+        {
+            options.Authority = authority;
+        }
+
         options.Audience = audience;
+        options.MapInboundClaims = false; // keep the `roles` claim name intact for CrmRoles.ClaimType
         options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -70,6 +77,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = !string.IsNullOrEmpty(audience),
             ValidAudience = audience,
             ValidateLifetime = true,
+            RoleClaimType = CrmRoles.ClaimType,
             ValidateIssuerSigningKey = !string.IsNullOrEmpty(signingKey),
             IssuerSigningKey = !string.IsNullOrEmpty(signingKey)
                 ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey))
@@ -77,8 +85,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, DynamicAuthorizationPolicyProvider>();
+// Reads (GET) are anonymous. Mutations are always protected by role-based policies (never toggled off):
+// create/update require `admin` or `user`; delete requires `admin`.
+builder.Services.AddAuthorization(static options =>
+{
+    options.AddPolicy(CrmRoles.WritePolicy, static policy => policy
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireRole(CrmRoles.Admin, CrmRoles.User));
+    options.AddPolicy(CrmRoles.DeletePolicy, static policy => policy
+        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+        .RequireRole(CrmRoles.Admin));
+});
 
 builder.Services.AddApplicationServices();
 

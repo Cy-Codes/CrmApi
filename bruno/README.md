@@ -87,7 +87,14 @@ bruno/
 └── 05-Negative-Tests/                       # Route validation & error handling
     ├── Invalid Provider Routing.bru         # Expects 404
     └── Nonexistent SF Account.bru           # Expects 404
+└── 06-Mutations/                            # Create → update → delete lifecycles + role checks
+    ├── 01-Salesforce-Account/               # 7 requests each: anonymous 401, user create 201 / update 200,
+    ├── 02-HubSpot-Company/                  #   user delete 403, admin delete 204, deleted GET 404, repeat delete 404
+    └── 03-Dynamics365-Account/
 ```
+
+> [!NOTE]
+> `06-Mutations` sends `Authorization: Bearer {{process.env.CRM_USER_TOKEN}}` / `CRM_ADMIN_TOKEN`. `run_tests.sh` mints local-development tokens with `crm-infra/scripts/dev-token.sh` when the variables are unset; export your own tokens to test a real deployment.
 
 ---
 

@@ -117,6 +117,100 @@ public sealed class BaseRepository : IBaseRepository
             ct);
     }
 
+    public Task ExecuteInsertAsync(
+        DatabaseProvider provider,
+        string table,
+        IReadOnlyDictionary<string, object?> values,
+        CancellationToken ct = default)
+    {
+        EnsureSafeIdentifiers(table, values.Keys);
+
+        var compiled = _compilerFactory.GetCompiler(provider)
+            .Compile(new Query(table).AsInsert(values));
+
+        return ExecuteMutationAsync(provider, compiled, ct);
+    }
+
+    public async Task<bool> ExecuteUpdateAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumnName,
+        object idValue,
+        IReadOnlyDictionary<string, object?> values,
+        CancellationToken ct = default)
+    {
+        EnsureSafeIdentifiers(table, values.Keys.Append(idColumnName));
+
+        var compiled = _compilerFactory.GetCompiler(provider)
+            .Compile(new Query(table).Where(idColumnName, idValue).AsUpdate(values));
+
+        return await ExecuteMutationAsync(provider, compiled, ct) > 0;
+    }
+
+    public async Task<bool> ExecuteDeleteAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumnName,
+        object idValue,
+        CancellationToken ct = default)
+    {
+        EnsureSafeIdentifiers(table, [idColumnName]);
+
+        var compiled = _compilerFactory.GetCompiler(provider)
+            .Compile(new Query(table).Where(idColumnName, idValue).AsDelete());
+
+        return await ExecuteMutationAsync(provider, compiled, ct) > 0;
+    }
+
+    /// <summary>
+    /// Pure guard rejecting table or column names that are not whitelisted SQL identifiers.
+    /// </summary>
+    private static void EnsureSafeIdentifiers(string table, IEnumerable<string> columns)
+    {
+        if (!table.IsSafeSqlIdentifier())
+        {
+            throw new ArgumentException("Invalid table name.", nameof(table));
+        }
+
+        var unsafeColumn = columns.FirstOrDefault(static column => !column.IsSafeSqlIdentifier());
+        if (unsafeColumn is not null)
+        {
+            throw new ArgumentException($"Invalid column name '{unsafeColumn}'.", nameof(columns));
+        }
+    }
+
+    /// <summary>
+    /// Side-effecting I/O boundary: executes one compiled mutation inside a transaction and translates
+    /// constraint violations into <see cref="ConflictException"/>.
+    /// </summary>
+    private Task<int> ExecuteMutationAsync(DatabaseProvider provider, SqlResult compiled, CancellationToken ct) =>
+        ExecuteWithOpenConnectionAsync(
+            provider,
+            async connection =>
+            {
+                try
+                {
+                    await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+                    var affected = await connection.ExecuteAsync(CreateCommand(compiled, ct, transaction));
+                    await transaction.CommitAsync(ct);
+                    return affected;
+                }
+                catch (Exception ex) when (IsConstraintViolation(ex))
+                {
+                    throw new ConflictException("The operation violates a relational constraint (foreign key or unique key).", ex);
+                }
+            },
+            ct,
+            retryTransientFaults: false);
+
+    private static bool IsConstraintViolation(Exception ex) =>
+        ex switch
+        {
+            SqlException sqlEx => SqlServerConstraintErrors.Contains(sqlEx.Number),
+            PostgresException pgEx => PgConstraintSqlStates.Contains(pgEx.SqlState),
+            _ => false
+        };
+
     /// <summary>
     /// Pure helper constructing a parameterized Dapper <see cref="CommandDefinition"/> from a compiled SqlKata query.
     /// </summary>
@@ -166,13 +260,29 @@ public sealed class BaseRepository : IBaseRepository
     private const string PgSqlStateAdminShutdown = "57P01";
     private const string PgConnectionExceptionPrefix = "08";
 
+    // Constraint violations surfaced as HTTP 409:
+    // SQL Server 547: FK/CHECK conflict, 2627: unique constraint, 2601: unique index
+    // PostgreSQL 23503: foreign_key_violation, 23505: unique_violation
+    private const int SqlServerConstraintConflict = 547;
+    private const int SqlServerUniqueConstraint = 2627;
+    private const int SqlServerUniqueIndex = 2601;
+    private const string PgForeignKeyViolation = "23503";
+    private const string PgUniqueViolation = "23505";
+
+    private static readonly ImmutableHashSet<int> SqlServerConstraintErrors =
+        [SqlServerConstraintConflict, SqlServerUniqueConstraint, SqlServerUniqueIndex];
+
+    private static readonly ImmutableHashSet<string> PgConstraintSqlStates =
+        [PgForeignKeyViolation, PgUniqueViolation];
+
     /// <summary>
-    /// Side-effecting I/O boundary: opens a provider-specific <see cref="DbConnection"/>, executes the async operation with transient fault retries, and disposes the connection.
+    /// Side-effecting I/O boundary: opens a provider-specific <see cref="DbConnection"/>, executes the async operation (with transient fault retries unless disabled for non-idempotent mutations), and disposes the connection.
     /// </summary>
     private async Task<TResult> ExecuteWithOpenConnectionAsync<TResult>(
         DatabaseProvider provider,
         Func<DbConnection, Task<TResult>> operation,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool retryTransientFaults = true)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -186,7 +296,7 @@ public sealed class BaseRepository : IBaseRepository
 
                 return await operation(connection);
             }
-            catch (Exception ex) when (attempt < MaxRetryAttempts && !ct.IsCancellationRequested && IsTransientException(ex))
+            catch (Exception ex) when (retryTransientFaults && attempt < MaxRetryAttempts && !ct.IsCancellationRequested && IsTransientException(ex))
             {
                 var delay = TimeSpan.FromMilliseconds(InitialRetryDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
                 await Task.Delay(delay, ct);

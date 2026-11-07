@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Domain.Common;
 using Domain.HubSpot;
 
@@ -6,10 +7,14 @@ namespace Infrastructure.Repositories;
 public sealed class HubSpotRepository : IHubSpotRepository
 {
     private readonly IBaseRepository _baseRepository;
+    private readonly ICrmIdGenerator _idGenerator;
+    private readonly TimeProvider _timeProvider;
 
-    public HubSpotRepository(IBaseRepository baseRepository)
+    public HubSpotRepository(IBaseRepository baseRepository, ICrmIdGenerator idGenerator, TimeProvider timeProvider)
     {
         _baseRepository = baseRepository ?? throw new ArgumentNullException(nameof(baseRepository));
+        _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public Task<PagedResult<Company>> GetCompaniesAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
@@ -96,4 +101,59 @@ public sealed class HubSpotRepository : IHubSpotRepository
 
     public Task<ObjectAssociation?> GetObjectAssociationByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<ObjectAssociation>(provider, "HubSpot.ObjectAssociation", "associationId", id, ct);
+
+    public Task<long> ExecuteCreateCompanyAsync(DatabaseProvider provider, CompanyWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, HubSpotWriteColumns.CompanyTable, HubSpotWriteColumns.CompanyIdColumn, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteUpdateCompanyAsync(DatabaseProvider provider, long id, CompanyWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, HubSpotWriteColumns.CompanyTable, HubSpotWriteColumns.CompanyIdColumn, id, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteDeleteCompanyAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, HubSpotWriteColumns.CompanyTable, HubSpotWriteColumns.CompanyIdColumn, id, ct);
+
+    public Task<long> ExecuteCreateContactAsync(DatabaseProvider provider, ContactWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, HubSpotWriteColumns.ContactTable, HubSpotWriteColumns.ContactIdColumn, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteUpdateContactAsync(DatabaseProvider provider, long id, ContactWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, HubSpotWriteColumns.ContactTable, HubSpotWriteColumns.ContactIdColumn, id, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteDeleteContactAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, HubSpotWriteColumns.ContactTable, HubSpotWriteColumns.ContactIdColumn, id, ct);
+
+    public Task<long> ExecuteCreateDealAsync(DatabaseProvider provider, DealWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, HubSpotWriteColumns.DealTable, HubSpotWriteColumns.DealIdColumn, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteUpdateDealAsync(DatabaseProvider provider, long id, DealWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, HubSpotWriteColumns.DealTable, HubSpotWriteColumns.DealIdColumn, id, request.ToColumns(), ct);
+
+    public Task<bool> ExecuteDeleteDealAsync(DatabaseProvider provider, long id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, HubSpotWriteColumns.DealTable, HubSpotWriteColumns.DealIdColumn, id, ct);
+
+    private async Task<long> CreateAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumn,
+        ImmutableDictionary<string, object?> columns,
+        CancellationToken ct)
+    {
+        var id = _idGenerator.NewHubSpotId();
+        var withAudit = columns.WithCreateAudit(idColumn, id, _timeProvider.GetUtcNow().UtcDateTime);
+        await _baseRepository.ExecuteInsertAsync(provider, table, withAudit, ct);
+        return id;
+    }
+
+    private Task<bool> UpdateAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumn,
+        long id,
+        ImmutableDictionary<string, object?> columns,
+        CancellationToken ct) =>
+        _baseRepository.ExecuteUpdateAsync(
+            provider,
+            table,
+            idColumn,
+            id,
+            columns.WithUpdateAudit(_timeProvider.GetUtcNow().UtcDateTime),
+            ct);
 }

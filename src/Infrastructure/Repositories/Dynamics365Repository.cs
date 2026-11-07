@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Domain.Common;
 using Domain.Dynamics365;
 
@@ -6,10 +7,14 @@ namespace Infrastructure.Repositories;
 public sealed class Dynamics365Repository : IDynamics365Repository
 {
     private readonly IBaseRepository _baseRepository;
+    private readonly ICrmIdGenerator _idGenerator;
+    private readonly TimeProvider _timeProvider;
 
-    public Dynamics365Repository(IBaseRepository baseRepository)
+    public Dynamics365Repository(IBaseRepository baseRepository, ICrmIdGenerator idGenerator, TimeProvider timeProvider)
     {
         _baseRepository = baseRepository ?? throw new ArgumentNullException(nameof(baseRepository));
+        _idGenerator = idGenerator ?? throw new ArgumentNullException(nameof(idGenerator));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public Task<PagedResult<Account>> GetAccountsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default) =>
@@ -86,4 +91,61 @@ public sealed class Dynamics365Repository : IDynamics365Repository
 
     public Task<ActivityPointer?> GetActivityPointerByIdAsync(DatabaseProvider provider, Guid id, CancellationToken ct = default) =>
         _baseRepository.GetByIdAsync<ActivityPointer>(provider, "Dynamics365.ActivityPointer", "activityid", id, ct);
+
+    public Task<Guid> ExecuteCreateAccountAsync(DatabaseProvider provider, AccountWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, Dynamics365WriteColumns.AccountTable, Dynamics365WriteColumns.AccountIdColumn, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateAccountAsync(DatabaseProvider provider, Guid id, AccountWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, Dynamics365WriteColumns.AccountTable, Dynamics365WriteColumns.AccountIdColumn, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteAccountAsync(DatabaseProvider provider, Guid id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, Dynamics365WriteColumns.AccountTable, Dynamics365WriteColumns.AccountIdColumn, id, ct);
+
+    public Task<Guid> ExecuteCreateContactAsync(DatabaseProvider provider, ContactWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, Dynamics365WriteColumns.ContactTable, Dynamics365WriteColumns.ContactIdColumn, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateContactAsync(DatabaseProvider provider, Guid id, ContactWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, Dynamics365WriteColumns.ContactTable, Dynamics365WriteColumns.ContactIdColumn, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteContactAsync(DatabaseProvider provider, Guid id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, Dynamics365WriteColumns.ContactTable, Dynamics365WriteColumns.ContactIdColumn, id, ct);
+
+    public Task<Guid> ExecuteCreateOpportunityAsync(DatabaseProvider provider, OpportunityWriteRequest request, CancellationToken ct = default) =>
+        CreateAsync(provider, Dynamics365WriteColumns.OpportunityTable, Dynamics365WriteColumns.OpportunityIdColumn, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteUpdateOpportunityAsync(DatabaseProvider provider, Guid id, OpportunityWriteRequest request, CancellationToken ct = default) =>
+        UpdateAsync(provider, Dynamics365WriteColumns.OpportunityTable, Dynamics365WriteColumns.OpportunityIdColumn, id, request.ToColumns(), request.OwnerId, ct);
+
+    public Task<bool> ExecuteDeleteOpportunityAsync(DatabaseProvider provider, Guid id, CancellationToken ct = default) =>
+        _baseRepository.ExecuteDeleteAsync(provider, Dynamics365WriteColumns.OpportunityTable, Dynamics365WriteColumns.OpportunityIdColumn, id, ct);
+
+    private async Task<Guid> CreateAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumn,
+        ImmutableDictionary<string, object?> columns,
+        Guid ownerId,
+        CancellationToken ct)
+    {
+        var id = _idGenerator.NewDynamicsId();
+        var withAudit = columns.WithCreateAudit(idColumn, id, ownerId, _timeProvider.GetUtcNow().UtcDateTime);
+        await _baseRepository.ExecuteInsertAsync(provider, table, withAudit, ct);
+        return id;
+    }
+
+    private Task<bool> UpdateAsync(
+        DatabaseProvider provider,
+        string table,
+        string idColumn,
+        Guid id,
+        ImmutableDictionary<string, object?> columns,
+        Guid ownerId,
+        CancellationToken ct) =>
+        _baseRepository.ExecuteUpdateAsync(
+            provider,
+            table,
+            idColumn,
+            id,
+            columns.WithUpdateAudit(ownerId, _timeProvider.GetUtcNow().UtcDateTime),
+            ct);
 }

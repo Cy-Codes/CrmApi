@@ -40,4 +40,25 @@ public interface IHubSpotRepository
 
     Task<PagedResult<ObjectAssociation>> GetObjectAssociationsAsync(DatabaseProvider provider, QueryOptions options, CancellationToken ct = default);
     Task<ObjectAssociation?> GetObjectAssociationByIdAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates a Company with a server-generated identifier and returns that identifier.</summary>
+    Task<long> ExecuteCreateCompanyAsync(DatabaseProvider provider, CompanyWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces a Company's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateCompanyAsync(DatabaseProvider provider, long id, CompanyWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes a Company; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteCompanyAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates a Contact with a server-generated identifier and returns that identifier.</summary>
+    Task<long> ExecuteCreateContactAsync(DatabaseProvider provider, ContactWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces a Contact's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateContactAsync(DatabaseProvider provider, long id, ContactWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes a Contact; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteContactAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
+
+    /// <summary>Side effect: creates a Deal with a server-generated identifier and returns that identifier.</summary>
+    Task<long> ExecuteCreateDealAsync(DatabaseProvider provider, DealWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: fully replaces a Deal's writable fields; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteUpdateDealAsync(DatabaseProvider provider, long id, DealWriteRequest request, CancellationToken ct = default);
+    /// <summary>Side effect: hard-deletes a Deal; returns <c>false</c> when it does not exist.</summary>
+    Task<bool> ExecuteDeleteDealAsync(DatabaseProvider provider, long id, CancellationToken ct = default);
 }

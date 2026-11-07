@@ -1,0 +1,25 @@
+meta {
+  name: Update As User (200)
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/{{provider}}/v1/hubspot/companies/{{created_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{process.env.CRM_USER_TOKEN}}
+}
+
+body:json {
+  {
+    "name": "Bruno Mutation Test Company (updated)"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
