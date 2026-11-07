@@ -72,8 +72,13 @@ public static partial class QueryFilteringExtensions
     }
 
     /// <summary>
-    /// Applies 1-based page offset and limit to a <see cref="Query"/>.
+    /// Applies 1-based page offset and limit to a <see cref="Query"/> with integer overflow protection.
     /// </summary>
-    public static Query ApplyPagination(this Query query, int page, int pageSize) =>
-        query.Skip((page - 1) * pageSize).Take(pageSize);
+    public static Query ApplyPagination(this Query query, int page, int pageSize)
+    {
+        var safePage = page < QueryOptions.DefaultPage ? QueryOptions.DefaultPage : (page > QueryOptions.MaxPage ? QueryOptions.MaxPage : page);
+        var safePageSize = pageSize is < QueryOptions.DefaultPage or > QueryOptions.MaxPageSize ? QueryOptions.DefaultPageSize : pageSize;
+        var offset = checked((long)(safePage - 1) * safePageSize);
+        return query.Skip(checked((int)offset)).Take(safePageSize);
+    }
 }

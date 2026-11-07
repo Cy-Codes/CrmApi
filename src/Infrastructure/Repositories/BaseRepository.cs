@@ -1,10 +1,13 @@
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.Net.Sockets;
 using Dapper;
 using Domain.Common;
 using Infrastructure.Compilers;
 using Infrastructure.Connections;
+using Microsoft.Data.SqlClient;
+using Npgsql;
 using SqlKata;
 
 namespace Infrastructure.Repositories;
@@ -14,6 +17,8 @@ namespace Infrastructure.Repositories;
 /// </summary>
 public sealed class BaseRepository : IBaseRepository
 {
+    public const int MaxChildResults = 1000;
+
     private readonly IDbConnectionFactory _connectionFactory;
     private readonly ISqlKataCompilerFactory _compilerFactory;
 
@@ -56,12 +61,15 @@ public sealed class BaseRepository : IBaseRepository
             provider,
             async connection =>
             {
+                await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+
                 var totalCount = await connection.ExecuteScalarAsync<int>(
-                    CreateCommand(compiledCount, ct));
+                    CreateCommand(compiledCount, ct, transaction));
 
                 var items = await connection.QueryAsync<T>(
-                    CreateCommand(compiledData, ct));
+                    CreateCommand(compiledData, ct, transaction));
 
+                await transaction.CommitAsync(ct);
                 return new PagedResult<T>(items.ToImmutableArray(), totalCount, page, pageSize);
             },
             ct);
@@ -95,8 +103,9 @@ public sealed class BaseRepository : IBaseRepository
         CancellationToken ct = default)
     {
         var baseQuery = new Query(table);
-        var query = configureQuery is not null ? configureQuery(baseQuery) : baseQuery;
-        var compiled = _compilerFactory.GetCompiler(provider).Compile(query);
+        var configuredQuery = configureQuery is not null ? configureQuery(baseQuery) : baseQuery;
+        var boundedQuery = configuredQuery.Limit(MaxChildResults);
+        var compiled = _compilerFactory.GetCompiler(provider).Compile(boundedQuery);
 
         return ExecuteWithOpenConnectionAsync<IReadOnlyList<T>>(
             provider,
@@ -111,26 +120,93 @@ public sealed class BaseRepository : IBaseRepository
     /// <summary>
     /// Pure helper constructing a parameterized Dapper <see cref="CommandDefinition"/> from a compiled SqlKata query.
     /// </summary>
-    private static CommandDefinition CreateCommand(SqlResult compiledQuery, CancellationToken ct) =>
+    private static CommandDefinition CreateCommand(
+        SqlResult compiledQuery,
+        CancellationToken ct,
+        DbTransaction? transaction = null) =>
         new(
             compiledQuery.Sql,
             new DynamicParameters(compiledQuery.NamedBindings),
+            transaction: transaction,
             cancellationToken: ct);
 
+    private const int MaxRetryAttempts = 3;
+    private static readonly TimeSpan InitialRetryDelay = TimeSpan.FromMilliseconds(50);
+
+    // Well-known transient SQL Server error numbers:
+    // 1205: Deadlock victim, -2: Execution timeout, 4060: Cannot open database,
+    // 40197: Error processing request, 40501: Service busy, 40613: Database unavailable,
+    // 10054/10053: Connection forcibly closed/reset, 233: Connection initialization failure
+    private const int SqlServerDeadlockVictim = 1205;
+    private const int SqlServerExecutionTimeout = -2;
+    private const int SqlServerCannotOpenDatabase = 4060;
+    private const int SqlServerServiceProcessingError = 40197;
+    private const int SqlServerServiceBusy = 40501;
+    private const int SqlServerDatabaseUnavailable = 40613;
+    private const int SqlServerConnectionReset = 10054;
+    private const int SqlServerConnectionAborted = 10053;
+    private const int SqlServerConnectionInitFailure = 233;
+
+    private static readonly ImmutableHashSet<int> TransientSqlServerErrors =
+        [
+            SqlServerDeadlockVictim,
+            SqlServerExecutionTimeout,
+            SqlServerCannotOpenDatabase,
+            SqlServerServiceProcessingError,
+            SqlServerServiceBusy,
+            SqlServerDatabaseUnavailable,
+            SqlServerConnectionReset,
+            SqlServerConnectionAborted,
+            SqlServerConnectionInitFailure,
+        ];
+
+    // Well-known transient PostgreSQL SQLSTATE codes:
+    // 40001: serialization_failure, 57P01: admin_shutdown, 08*: connection_exception family
+    private const string PgSqlStateSerializationFailure = "40001";
+    private const string PgSqlStateAdminShutdown = "57P01";
+    private const string PgConnectionExceptionPrefix = "08";
+
     /// <summary>
-    /// Side-effecting I/O boundary: opens a provider-specific <see cref="DbConnection"/>, executes the async operation, and disposes the connection.
+    /// Side-effecting I/O boundary: opens a provider-specific <see cref="DbConnection"/>, executes the async operation with transient fault retries, and disposes the connection.
     /// </summary>
     private async Task<TResult> ExecuteWithOpenConnectionAsync<TResult>(
         DatabaseProvider provider,
         Func<DbConnection, Task<TResult>> operation,
         CancellationToken ct)
     {
-        await using var connection = _connectionFactory.CreateConnection(provider);
-        if (connection.State != ConnectionState.Open)
+        for (var attempt = 1; ; attempt++)
         {
-            await connection.OpenAsync(ct);
-        }
+            try
+            {
+                await using var connection = _connectionFactory.CreateConnection(provider);
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync(ct);
+                }
 
-        return await operation(connection);
+                return await operation(connection);
+            }
+            catch (Exception ex) when (attempt < MaxRetryAttempts && !ct.IsCancellationRequested && IsTransientException(ex))
+            {
+                var delay = TimeSpan.FromMilliseconds(InitialRetryDelay.TotalMilliseconds * Math.Pow(2, attempt - 1));
+                await Task.Delay(delay, ct);
+            }
+        }
     }
+
+    private static bool IsTransientException(Exception ex) =>
+        ex switch
+        {
+            SqlException sqlEx => sqlEx.IsTransient || TransientSqlServerErrors.Contains(sqlEx.Number),
+            NpgsqlException npgEx => npgEx.IsTransient || IsTransientNpgSqlState(npgEx.SqlState),
+            TimeoutException => true,
+            SocketException => true,
+            _ => false
+        };
+
+    private static bool IsTransientNpgSqlState(string? sqlState) =>
+        sqlState is not null && (
+            sqlState.StartsWith(PgConnectionExceptionPrefix, StringComparison.Ordinal) ||
+            sqlState == PgSqlStateSerializationFailure ||
+            sqlState == PgSqlStateAdminShutdown);
 }

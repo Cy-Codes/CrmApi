@@ -44,9 +44,33 @@ public sealed class DbConnectionFactory : IDbConnectionFactory
                 $"Unsupported database provider: {provider}")
         };
 
-    private string ResolveConnectionString(ImmutableArray<string> candidateKeys, string defaultConnectionString) =>
+    public void ValidateConfiguration(bool allowFallbackDefaults = false)
+    {
+        if (allowFallbackDefaults)
+        {
+            return;
+        }
+
+        var msConfigured = TryGetRawConnectionString(MsSqlCandidateKeys) is not null;
+        var pgConfigured = TryGetRawConnectionString(PgSqlCandidateKeys) is not null;
+
+        if (!msConfigured || !pgConfigured)
+        {
+            var missing = new List<string>();
+            if (!msConfigured) missing.Add("SQL Server (CRMDatabaseMS)");
+            if (!pgConfigured) missing.Add("PostgreSQL (CRMDatabasePG)");
+
+            throw new InvalidOperationException(
+                $"Missing required database connection string configuration for: {string.Join(", ", missing)}. " +
+                "Connection strings must be configured explicitly when outside development fallback mode.");
+        }
+    }
+
+    private string? TryGetRawConnectionString(ImmutableArray<string> candidateKeys) =>
         candidateKeys
             .Select(key => _configuration.GetConnectionString(key) ?? _configuration[$"ConnectionStrings:{key}"])
-            .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value))
-        ?? defaultConnectionString;
+            .FirstOrDefault(static value => !string.IsNullOrWhiteSpace(value));
+
+    private string ResolveConnectionString(ImmutableArray<string> candidateKeys, string defaultConnectionString) =>
+        TryGetRawConnectionString(candidateKeys) ?? defaultConnectionString;
 }

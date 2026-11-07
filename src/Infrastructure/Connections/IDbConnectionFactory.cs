@@ -14,4 +14,11 @@ public interface IDbConnectionFactory
     /// <param name="provider">Target database engine.</param>
     /// <returns>An unopened DbConnection instance.</returns>
     DbConnection CreateConnection(DatabaseProvider provider);
+
+    /// <summary>
+    /// Validates that required database connection strings are present in configuration.
+    /// Throws <see cref="InvalidOperationException"/> if required connection strings are missing.
+    /// </summary>
+    /// <param name="allowFallbackDefaults">Whether fallback localhost defaults are permitted (e.g. in local development).</param>
+    void ValidateConfiguration(bool allowFallbackDefaults = false);
 }

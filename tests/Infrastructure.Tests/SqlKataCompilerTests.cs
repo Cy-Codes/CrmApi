@@ -108,4 +108,21 @@ public sealed class SqlKataCompilerTests
         Assert.Equal(expected, rawProvider.ToDatabaseProvider());
         Assert.Equal(rawProvider.ToLowerInvariant(), expected.ToProviderCode());
     }
+
+    [Fact]
+    public void QueryFilteringExtensions_ApplyPagination_ProtectsAgainstIntegerOverflow()
+    {
+        var compiler = _factory.GetCompiler(DatabaseProvider.Ms);
+        var query = new Query("Salesforce.Account")
+            .OrderBy("Name")
+            .ApplyPagination(int.MaxValue, 100);
+
+        var compiled = compiler.Compile(query);
+
+        // MaxPage is 100,000 so offset is (100,000 - 1) * 100 = 9,999,900
+        Assert.Contains("OFFSET", compiled.Sql);
+        Assert.Contains("FETCH NEXT", compiled.Sql);
+        Assert.Contains(9999900L, compiled.Bindings);
+        Assert.Contains(100, compiled.Bindings);
+    }
 }

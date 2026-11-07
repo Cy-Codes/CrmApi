@@ -36,4 +36,46 @@ public sealed class GraphQLEndpointTests : IClassFixture<CustomWebApplicationFac
         Assert.Contains("salesforceAccounts", json);
         Assert.Contains("Acme Corp", json);
     }
+
+    [Fact]
+    public async Task PostGraphQL_DeeplyNestedQueryExceedingMaxDepth_ReturnsErrors()
+    {
+        // Query nesting depth exceeds max execution depth limit (10)
+        var query = new
+        {
+            query = @"
+                query {
+                    salesforceAccounts(provider: MS) {
+                        contacts {
+                            account {
+                                contacts {
+                                    account {
+                                        contacts {
+                                            account {
+                                                contacts {
+                                                    account {
+                                                        contacts {
+                                                            account {
+                                                                id
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }"
+        };
+
+        var content = new StringContent(JsonSerializer.Serialize(query), Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync("/graphql", content);
+
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains("errors", json);
+        Assert.Contains("depth", json, StringComparison.OrdinalIgnoreCase);
+    }
 }

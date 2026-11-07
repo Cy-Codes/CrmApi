@@ -1,11 +1,13 @@
 using Domain.Common;
 using Infrastructure.Connections;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("health")]
+[AllowAnonymous]
 public sealed class HealthController : ControllerBase
 {
     private const string HealthyStatus = "Healthy";

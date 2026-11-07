@@ -13,6 +13,7 @@ public record QueryOptions(
 {
     public const int DefaultPage = 1;
     public const int DefaultPageSize = 20;
+    public const int MaxPage = 100_000;
     public const int MaxPageSize = 100;
     public const string DefaultSortDirection = "asc";
     public const string DescendingSortDirection = "desc";
@@ -24,9 +25,9 @@ public record QueryOptions(
     public static readonly QueryOptions Default = new();
 
     /// <summary>
-    /// Pure calculation returning a valid 1-based page number.
+    /// Pure calculation returning a valid 1-based page number clamped to [DefaultPage, MaxPage].
     /// </summary>
-    public int NormalizedPage => Page < DefaultPage ? DefaultPage : Page;
+    public int NormalizedPage => Page < DefaultPage ? DefaultPage : (Page > MaxPage ? MaxPage : Page);
 
     /// <summary>
     /// Pure calculation clamping PageSize within [1, MaxPageSize].
